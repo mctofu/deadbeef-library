@@ -35,7 +35,6 @@
 #define     CONFSTR_FB_SHOW_TREE_LINES      "libbrowser.treelines"
 #define     CONFSTR_FB_WIDTH                "libbrowser.sidebar_width"
 #define     CONFSTR_FB_SHOW_COVERART        "libbrowser.show_coverart"
-#define     CONFSTR_FB_COVERART             "libbrowser.coverart_files"
 #define     CONFSTR_FB_COVERART_SIZE        "libbrowser.coverart_size"
 #define     CONFSTR_FB_COVERART_SCALE       "libbrowser.coverart_scale"
 #define     CONFSTR_FB_SAVE_TREEVIEW        "libbrowser.save_treeview"
@@ -55,8 +54,6 @@
 #define     CONFSTR_FB_HIDE_TOOLBAR         "libbrowser.hide_toolbar"
 
 #define     DEFAULT_FB_DEFAULT_PATH         ""
-#define     DEFAULT_FB_COVERART             "cover.png;cover.jpg;folder.png;folder.jpg;front.png;front.jpg"
-
 
 /* Treebrowser setup */
 enum
