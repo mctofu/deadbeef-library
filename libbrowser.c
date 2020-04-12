@@ -361,22 +361,14 @@ update_rootdirs ()
 {
     trace("update rootdirs\n");
 
-#if !GTK_CHECK_VERSION(3,0,0)
-    gtk_list_store_clear (GTK_LIST_STORE (gtk_combo_box_get_model (GTK_COMBO_BOX (addressbar))));
-#else
     gtk_combo_box_text_remove_all (GTK_COMBO_BOX_TEXT (addressbar));
-#endif
 
     gchar **config_rootdirs;
     config_rootdirs = g_strsplit (CONFIG_DEFAULT_PATH, ";", 0);
 
     for (int i = 0; i < g_strv_length (config_rootdirs); i++)
     {
-#if !GTK_CHECK_VERSION(3,0,0)
-        gtk_combo_box_append_text (GTK_COMBO_BOX (addressbar), g_strdup (config_rootdirs[i]));
-#else
         gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (addressbar), NULL, g_strdup (config_rootdirs[i]));
-#endif
     }
     g_strfreev (config_rootdirs);
 
@@ -560,12 +552,8 @@ on_drag_data_get (GtkWidget *widget, GdkDragContext *drag_context,
 
     trace("dnd send: %s\n", uri);
 
-#if GTK_CHECK_VERSION(3,0,0)
     GdkAtom target = gtk_selection_data_get_target (sdata);
     gtk_selection_data_set (sdata, target, 8, (guchar*) uri, strlen (uri));
-#else
-    gtk_selection_data_set (sdata, sdata->target, 8, (guchar*) uri, strlen (uri));
-#endif
 
     g_free (uri);
 }
@@ -976,17 +964,10 @@ create_sidebar (void)
 
     treeview            = create_view_and_model ();
     scrollwin           = gtk_scrolled_window_new (NULL, NULL);
-#if !GTK_CHECK_VERSION(3,0,0)
-    sidebar             = gtk_vbox_new (FALSE, 0);
-    sidebar_searchbox   = gtk_hbox_new (FALSE, 0);
-    sidebar_addressbox  = gtk_hbox_new (FALSE, 0);
-    addressbar          = gtk_combo_box_text_new_with_entry ();
-#else
     sidebar             = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     sidebar_searchbox   = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     sidebar_addressbox  = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
     addressbar          = gtk_combo_box_text_new_with_entry ();
-#endif
     sidebar_toolbar     = gtk_toolbar_new ();
 #if !GTK_CHECK_VERSION(3,6,0)
     searchbar           = gtk_entry_new ();
