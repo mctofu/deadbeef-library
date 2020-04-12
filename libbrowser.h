@@ -31,12 +31,6 @@
 #define     CONFSTR_FB_ENABLED              "libbrowser.enabled"
 #define     CONFSTR_FB_HIDDEN               "libbrowser.hidden"
 #define     CONFSTR_FB_DEFAULT_PATH         "libbrowser.defaultpath"
-#define     CONFSTR_FB_SHOW_HIDDEN_FILES    "libbrowser.showhidden"
-#define     CONFSTR_FB_FILTER_ENABLED       "libbrowser.filter_enabled"
-#define     CONFSTR_FB_FILTER               "libbrowser.filter"
-#define     CONFSTR_FB_FILTER_AUTO          "libbrowser.autofilter"
-#define     CONFSTR_FB_SHOW_BOOKMARKS       "libbrowser.showbookmarks"
-#define     CONFSTR_FB_BOOKMARKS_FILE       "libbrowser.extra_bookmarks"
 #define     CONFSTR_FB_SHOW_ICONS           "libbrowser.showicons"
 #define     CONFSTR_FB_SHOW_TREE_LINES      "libbrowser.treelines"
 #define     CONFSTR_FB_WIDTH                "libbrowser.sidebar_width"
@@ -61,9 +55,7 @@
 #define     CONFSTR_FB_HIDE_TOOLBAR         "libbrowser.hide_toolbar"
 
 #define     DEFAULT_FB_DEFAULT_PATH         ""
-#define     DEFAULT_FB_FILTER               ""  // auto-filter enabled by default
 #define     DEFAULT_FB_COVERART             "cover.png;cover.jpg;folder.png;folder.jpg;front.png;front.jpg"
-#define     DEFAULT_FB_BOOKMARKS_FILE       "$HOME/.config/deadbeef/bookmarks"
 
 
 /* Treebrowser setup */
@@ -94,7 +86,6 @@ enum
 
 static void         gtkui_update_listview_headers (void);
 static void         setup_dragdrop (void);
-static void         create_autofilter (void);
 static void         save_config (void);
 static void         save_config_expanded_rows (void);
 static void         load_config (void);
@@ -126,11 +117,6 @@ static void         create_settings_dialog (void);
 static void         add_uri_to_playlist_worker (void *data);
 static void         add_uri_to_playlist (GList *uri_list, int plt, int append, int threaded);
 
-static gboolean     check_filtered (const gchar *base_name);
-static gboolean     check_hidden (const gchar *filename);
-static gboolean     check_search (const gchar *filename);
-static gboolean     check_empty (gchar *directory);
-
 static gboolean     treeview_row_expanded_iter (GtkTreeView *tree_view, GtkTreeIter *iter);
 static GSList *     treeview_check_expanded (gchar *uri);
 static void         treeview_clear_expanded (void);
@@ -140,9 +126,6 @@ static gboolean     treebrowser_checkdir (const gchar *directory);
 static void         treebrowser_chroot(gchar *directory);
 static void         treebrowser_browse_dir (gpointer directory);
 static gboolean     treebrowser_browse (gchar *directory, gpointer parent);
-static void         treebrowser_bookmarks_set_state (void);
-static void         treebrowser_load_bookmarks (void);
-static void         treebrowser_clear_bookmarks (void);
 
 static void         on_mainmenu_toggle (GtkMenuItem *menuitem, gpointer *user_data);
 
