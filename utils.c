@@ -76,45 +76,17 @@ utils_str_casecmp (const gchar *s1, const gchar *s2)
     return result;
 }
 
-/* Get list of filenames inside a directory */
-GSList *
-utils_get_file_list_full (const gchar *path, gboolean full_path, gboolean sort, GError **error)
-{
-    GSList *list = NULL;
-    GDir *dir;
-    const gchar *filename;
-
-    if (error)
-        *error = NULL;
-    g_return_val_if_fail (path != NULL, NULL);
-
-    dir = g_dir_open (path, 0, error);
-    if (dir == NULL)
-        return NULL;
-
-    foreach_dir (filename, dir) {
-        list = g_slist_prepend (list, full_path ? g_build_path (G_DIR_SEPARATOR_S, path, filename, NULL) : g_strdup (filename));
-    }
-    g_dir_close (dir);
-
-    /* sorting last is quicker than on insertion */
-    if (sort)
-        list = g_slist_sort (list, (GCompareFunc) utils_str_casecmp);
-    else
-        list = g_slist_reverse (list);
-    return list;
-}
-
 GSList *
 utils_get_file_list (const gchar *path, guint *length, gboolean sort, GError **error)
 {
-    GSList *list = utils_get_file_list_full (path, FALSE, sort, error);
+    GSList *list = NULL;
+    list = g_slist_prepend (list, g_strdup ("/home/david/Music"));
 
     if (length)
         *length = g_slist_length (list);
+
     return list;
 }
-
 
 /* Convert text in local encoding to UTF8 */
 gchar *
@@ -128,39 +100,6 @@ utils_get_utf8_from_locale(const gchar *locale_text)
     if (utf8_text == NULL)
         utf8_text = g_strdup (locale_text);
     return utf8_text;
-}
-
-/* Get current home directory */
-gchar *
-utils_expand_home_dir (const gchar *path)
-{
-    gchar *expanded_path = g_strdup (path);
-
-    if (g_strrstr (expanded_path, "~"))
-    {
-        gchar **split = g_strsplit (expanded_path, "~", 0);
-        g_free (expanded_path);
-        expanded_path = g_strjoinv (g_getenv ("HOME"), split);
-        g_strfreev (split);
-    }
-
-    if (g_strrstr (expanded_path, "$HOME"))
-    {
-        gchar **split = g_strsplit (expanded_path, "$HOME", 0);
-        g_free (expanded_path);
-        expanded_path = g_strjoinv (g_getenv ("HOME"), split);
-        g_strfreev (split);
-    }
-
-    if (g_strrstr (expanded_path, "${HOME}"))
-    {
-        gchar **split = g_strsplit (expanded_path, "${HOME}", 0);
-        g_free (expanded_path);
-        expanded_path = g_strjoinv (g_getenv ("HOME"), split);
-        g_strfreev (split);
-    }
-
-    return expanded_path;
 }
 
 /* Get URI tooltip from URI, escaping ampersands ('&') */

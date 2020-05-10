@@ -2040,7 +2040,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
         {
             fname       = node->data;
             uri         = g_strconcat (directory, fname, NULL);
-            is_dir      = g_file_test (uri, G_FILE_TEST_IS_DIR);
+            is_dir      = TRUE;
             utf8_name   = utils_get_utf8_from_locale (fname);
             tooltip     = utils_tooltip_from_uri (uri);
 
