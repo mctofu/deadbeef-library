@@ -8,7 +8,6 @@
 #include <gtk/gtk.h>
 #include "utils.h"
 
-
 /* Get pixbuf icon from current icon theme */
 GdkPixbuf *
 utils_pixbuf_from_stock (const gchar *icon_name, gint size)
@@ -76,17 +75,6 @@ utils_str_casecmp (const gchar *s1, const gchar *s2)
     return result;
 }
 
-GSList *
-utils_get_file_list (const gchar *path, guint *length, gboolean sort, GError **error)
-{
-    GSList *list = NULL;
-    list = g_slist_prepend (list, g_strdup ("/home/david/Music"));
-
-    if (length)
-        *length = g_slist_length (list);
-
-    return list;
-}
 
 /* Convert text in local encoding to UTF8 */
 gchar *

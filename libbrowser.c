@@ -45,6 +45,7 @@
 #include "libbrowser.h"
 #include "support.h"
 #include "utils.h"
+#include "client.h"
 
 #ifdef DEBUG
 #pragma message "DEBUG MODE ENABLED!"
@@ -2013,6 +2014,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
     gchar           *utf8_name;
     GSList          *list, *node;
 
+    BrowseItem      *item;
     gchar           *fname;
     gchar           *uri;
     gchar           *tooltip;
@@ -2033,14 +2035,15 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    list = utils_get_file_list (directory, NULL, CONFIG_SORT_TREEVIEW, NULL);
+    list = client_browse_items (directory, NULL, CONFIG_SORT_TREEVIEW, NULL);
     if (list != NULL)
     {
         foreach_slist_free (node, list)
         {
-            fname       = node->data;
-            uri         = g_strconcat (directory, fname, NULL);
-            is_dir      = TRUE;
+            item        = node->data;
+            fname       = item->name;
+            uri         = item->uri;
+            is_dir      = item->folder;
             utf8_name   = utils_get_utf8_from_locale (fname);
             tooltip     = utils_tooltip_from_uri (uri);
 
@@ -2093,6 +2096,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
         g_free (utf8_name);
         g_free (uri);
         g_free (fname);
+        g_free (item);
         g_free (tooltip);
     }
     else

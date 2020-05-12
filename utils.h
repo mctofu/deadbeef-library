@@ -16,7 +16,6 @@
 GdkPixbuf *     utils_pixbuf_from_stock (const gchar *icon_name, gint size);
 gboolean        utils_str_equal (const gchar *a, const gchar *b);
 gint            utils_str_casecmp (const gchar *s1, const gchar *s2);
-GSList *        utils_get_file_list (const gchar *path, guint *length, gboolean sort, GError **error);
 gchar *         utils_get_utf8_from_locale(const gchar *locale_text);
 gchar *         utils_tooltip_from_uri (const gchar *uri);
 gchar *         utils_make_cache_path (const gchar *uri, gint imgsize, gboolean scale);
