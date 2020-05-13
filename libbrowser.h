@@ -130,8 +130,6 @@ static void         on_menu_add (GtkMenuItem *menuitem, GList *uri_list);
 static void         on_menu_add_current (GtkMenuItem *menuitem, GList *uri_list);
 static void         on_menu_replace_current (GtkMenuItem *menuitem, GList *uri_list);
 static void         on_menu_add_new (GtkMenuItem *menuitem, GList *uri_list);
-static void         on_menu_enter_directory (GtkMenuItem *menuitem, gchar *uri);
-static void         on_menu_go_up (GtkMenuItem *menuitem, gpointer *user_data);
 static void         on_menu_refresh (GtkMenuItem *menuitem, gpointer *user_data);
 static void         on_menu_expand_one (GtkMenuItem *menuitem, gpointer *user_data);
 static void         on_menu_expand_all (GtkMenuItem *menuitem, gpointer *user_data);
@@ -144,16 +142,12 @@ static void         on_menu_hide_navigation (GtkMenuItem *menuitem, gpointer *us
 static void         on_menu_hide_search (GtkMenuItem *menuitem, gpointer *user_data);
 static void         on_menu_hide_toolbar (GtkMenuItem *menuitem, gpointer *user_data);
 #if GTK_CHECK_VERSION(3,16,0)
-static void         on_menu_rename (GtkMenuItem *menuitem, GList *uri_list);
 static void         on_menu_config (GtkMenuItem *menuitem, gpointer user_data);
 #endif
 
 static void         on_button_add_current (void);
 static void         on_button_replace_current (void);
 static void         on_button_refresh (void);
-static void         on_button_go_up (void);
-static void         on_button_go_home (void);
-static void         on_button_go_default (void);
 static void         on_addressbar_changed (void);
 static void         on_searchbar_changed (void);
 #if !GTK_CHECK_VERSION(3,6,0)

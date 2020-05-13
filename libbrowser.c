@@ -797,15 +797,6 @@ create_popup_menu (GtkTreePath *path, gchar *name, GList *uri_list)
     item = gtk_separator_menu_item_new ();
     gtk_container_add (GTK_CONTAINER (menu), item);
 
-    item = gtk_menu_item_new_with_mnemonic (_("Enter _directory"));
-    gtk_container_add (GTK_CONTAINER (menu), item);
-    g_signal_connect (item, "activate", G_CALLBACK (on_menu_enter_directory), uri);
-    gtk_widget_set_sensitive (item, is_dir);
-
-    item = gtk_menu_item_new_with_mnemonic (_("Go _up"));
-    gtk_container_add (GTK_CONTAINER (menu), item);
-    g_signal_connect (item, "activate", G_CALLBACK (on_menu_go_up), NULL);
-
     item = gtk_menu_item_new_with_mnemonic (_("Re_fresh"));
     gtk_container_add (GTK_CONTAINER (menu), item);
     g_signal_connect (item, "activate", G_CALLBACK (on_menu_refresh), NULL);
@@ -817,14 +808,6 @@ create_popup_menu (GtkTreePath *path, gchar *name, GList *uri_list)
     gtk_container_add (GTK_CONTAINER (menu), item);
     g_signal_connect (item, "activate", G_CALLBACK (on_menu_copy_uri), uri_list);
     gtk_widget_set_sensitive (item, is_exists);
-
-#if GTK_CHECK_VERSION(3,16,0)
-    // new rename dialog (uses GTK3)
-    item = gtk_menu_item_new_with_mnemonic (_("Rena_me file or directory"));
-    gtk_container_add (GTK_CONTAINER (menu), item);
-    g_signal_connect (item, "activate", G_CALLBACK (on_menu_rename), uri_list);
-    gtk_widget_set_sensitive (item, is_exists && (num_items == 1));  // can only rename one file at once
-#endif
 
     item = gtk_separator_menu_item_new ();
     gtk_container_add (GTK_CONTAINER (menu), item);
@@ -987,27 +970,9 @@ create_sidebar (void)
     gtk_toolbar_set_style (GTK_TOOLBAR (sidebar_toolbar), GTK_TOOLBAR_ICONS);
 
     wid = GTK_WIDGET (gtk_tool_button_new (NULL, ""));
-    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "gtk-go-up");
-    gtk_tool_item_set_tooltip_text (GTK_TOOL_ITEM (wid), _("Go to parent directory"));
-    g_signal_connect (wid, "clicked", G_CALLBACK (on_button_go_up), NULL);
-    gtk_container_add (GTK_CONTAINER (sidebar_toolbar), wid);
-
-    wid = GTK_WIDGET (gtk_tool_button_new (NULL, ""));
     gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "gtk-refresh");
     gtk_tool_item_set_tooltip_text (GTK_TOOL_ITEM (wid), _("Refresh current directory"));
     g_signal_connect (wid, "clicked", G_CALLBACK (on_button_refresh), NULL);
-    gtk_container_add (GTK_CONTAINER (sidebar_toolbar), wid);
-
-    wid = GTK_WIDGET (gtk_tool_button_new (NULL, ""));
-    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "gtk-home");
-    gtk_tool_item_set_tooltip_text (GTK_TOOL_ITEM (wid), _("Go to home directory"));
-    g_signal_connect (wid, "clicked", G_CALLBACK (on_button_go_home), NULL);
-    gtk_container_add (GTK_CONTAINER (sidebar_toolbar), wid);
-
-    wid = GTK_WIDGET (gtk_tool_button_new (NULL, ""));
-    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "gtk-clear");
-    gtk_tool_item_set_tooltip_text (GTK_TOOL_ITEM (wid), _("Go to default directory"));
-    g_signal_connect (wid, "clicked", G_CALLBACK (on_button_go_default), NULL);
     gtk_container_add (GTK_CONTAINER (sidebar_toolbar), wid);
 
     wid = GTK_WIDGET (gtk_tool_item_new ());
@@ -1962,26 +1927,7 @@ treebrowser_chroot (gchar *directory)
 {
     trace("chroot to directory: %s\n", directory);
 
-    if (! directory)
-        directory = get_default_dir ();  // fallback
-
-    if (g_str_has_suffix (directory, G_DIR_SEPARATOR_S))
-        g_strlcpy (directory, directory, strlen (directory));
-
-    gtk_entry_set_text (GTK_ENTRY (gtk_bin_get_child (GTK_BIN (addressbar))), directory);
-
-    if (! directory || (strlen (directory) == 0))
-        directory = G_DIR_SEPARATOR_S;
-
-    if (! treebrowser_checkdir (directory))
-        return;
-
-    setptr (addressbar_last_address, g_strdup (directory));
-
     treebrowser_browse_dir (NULL);  // use addressbar
-    //trace("starting thread for adding files to playlist\n");
-    //intptr_t tid = deadbeef->thread_start (treebrowser_browse_dir, NULL);
-    //deadbeef->thread_detach (tid);
 }
 
 /* Browse given directory - update contents and fill in the treeview */
@@ -2019,12 +1965,6 @@ treebrowser_browse (gchar *directory, gpointer parent)
     gchar           *uri;
     gchar           *tooltip;
 
-    if (! directory)
-        directory = addressbar_last_address;
-
-    if (! directory)
-        directory = get_default_dir ();  // fallback
-
     directory = g_strconcat (directory, G_DIR_SEPARATOR_S, NULL);
 
     has_parent = parent ? gtk_tree_store_iter_is_valid (treestore, parent) : FALSE;
@@ -2035,7 +1975,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    list = client_browse_items (directory, NULL, CONFIG_SORT_TREEVIEW, NULL);
+    list = client_browse_items (directory, searchbar_text, NULL);
     if (list != NULL)
     {
         foreach_slist_free (node, list)
@@ -2186,21 +2126,9 @@ on_menu_add_new (GtkMenuItem *menuitem, GList *uri_list)
 }
 
 static void
-on_menu_enter_directory (GtkMenuItem *menuitem, gchar *uri)
-{
-    treebrowser_chroot (uri);
-}
-
-static void
-on_menu_go_up (GtkMenuItem *menuitem, gpointer *user_data)
-{
-    on_button_go_up ();
-}
-
-static void
 on_menu_refresh (GtkMenuItem *menuitem, gpointer *user_data)
 {
-    treebrowser_chroot (addressbar_last_address);
+    treebrowser_browse_dir (NULL);
 }
 
 static void
@@ -2316,103 +2244,6 @@ on_menu_hide_toolbar (GtkMenuItem *menuitem, gpointer *user_data)
 
 #if GTK_CHECK_VERSION(3,16,0)
 static void
-on_menu_rename (GtkMenuItem *menuitem, GList *uri_list)
-{
-    if (! uri_list)
-        return;
-
-    gchar *source_uri = uri_list->next->data;  // use only first item
-    gboolean is_dir = g_file_test (source_uri, G_FILE_TEST_IS_DIR);
-
-    gchar *path   = g_path_get_dirname (source_uri);
-    gchar *source = g_path_get_basename (source_uri);
-
-    GtkWidget *dialog = gtk_dialog_new_with_buttons (
-            is_dir ? _("Rename directory") : _("Rename file"),
-            GTK_WINDOW (gtkui_plugin->get_mainwin ()),
-            GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-            _("_Cancel"), GTK_RESPONSE_CANCEL,
-            _("_OK"), GTK_RESPONSE_OK,
-            NULL);
-
-    GtkWidget *content = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
-
-    GtkWidget *grid         = gtk_grid_new ();
-    GtkWidget *lbl_source   = gtk_label_new (_("Source:"));
-    GtkWidget *lbl_target   = gtk_label_new (_("Target:"));
-    GtkWidget *entry_source = gtk_entry_new ();
-    GtkWidget *entry_target = gtk_entry_new ();
-
-    gtk_widget_set_margin_start (lbl_source, 40);
-    gtk_widget_set_margin_start (lbl_target, 40);
-    gtk_widget_set_hexpand (entry_source, TRUE);
-    gtk_widget_set_hexpand (entry_target, TRUE);
-
-    gtk_grid_attach (GTK_GRID (grid), lbl_source,   0, 0, 1, 1);
-    gtk_grid_attach (GTK_GRID (grid), entry_source, 1, 0, 1, 1);
-    gtk_grid_attach (GTK_GRID (grid), lbl_target,   0, 1, 1, 1);
-    gtk_grid_attach (GTK_GRID (grid), entry_target, 1, 1, 1, 1);
-
-    gtk_grid_set_row_spacing (GTK_GRID (grid), 2);
-
-    gtk_widget_set_size_request (lbl_source, 100, -1);
-    gtk_widget_set_size_request (lbl_target, 100, -1);
-
-#if GTK_CHECK_VERSION(3,16,0)
-    gtk_label_set_xalign (GTK_LABEL (lbl_source), 0.);
-    gtk_label_set_xalign (GTK_LABEL (lbl_target), 0.);
-#endif
-
-    gtk_container_set_border_width (GTK_CONTAINER (grid), 8);
-    gtk_box_pack_start (GTK_BOX (content), grid, TRUE, TRUE, 0);
-
-    gtk_entry_set_text (GTK_ENTRY (entry_source), source);
-    gtk_entry_set_text (GTK_ENTRY (entry_target), source);
-
-    gtk_widget_set_sensitive (GTK_WIDGET (entry_source), FALSE);  // read-only
-
-    gtk_widget_show_all (dialog);
-
-    if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_OK)
-    {
-        gchar *target = g_path_get_basename (gtk_entry_get_text (GTK_ENTRY (entry_target)));
-        gchar *target_uri = g_build_filename (path, target, NULL);
-
-        trace("rename %s -> %s\n", source_uri, target_uri);
-        gint success = g_rename (source_uri, target_uri);
-
-        if (success != 0)
-        {
-            GtkWidget *error = gtk_message_dialog_new (
-                    GTK_WINDOW (gtkui_plugin->get_mainwin ()),
-                    GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT,
-                    GTK_MESSAGE_ERROR,
-                    GTK_BUTTONS_CLOSE,
-                    _("Failed to rename %s!\n\n%s\n\t==>\n%s"),
-                    is_dir ? _("directory") : _("file"),
-                    source_uri, target_uri);
-
-            gtk_dialog_run (GTK_DIALOG (error));
-            gtk_widget_destroy (error);
-        }
-        else
-        {
-            treebrowser_chroot (addressbar_last_address);  // update treeview
-        }
-
-        g_free (target_uri);
-        g_free (target);
-    }
-
-    g_free (source);
-    g_free (path);
-
-    gtk_widget_destroy (dialog);
-}
-#endif
-
-#if GTK_CHECK_VERSION(3,16,0)
-static void
 on_menu_config (GtkMenuItem *menuitem, gpointer user_data)
 {
     create_settings_dialog ();
@@ -2464,31 +2295,7 @@ on_button_replace_current (void)
 static void
 on_button_refresh (void)
 {
-    treebrowser_chroot (addressbar_last_address);
-}
-
-static void
-on_button_go_up (void)
-{
-    gchar *uri = g_path_get_dirname (addressbar_last_address);
-    treebrowser_chroot (uri);
-    g_free (uri);
-}
-
-static void
-on_button_go_home (void)
-{
-    gchar *path = g_strdup (g_getenv ("HOME"));
-    treebrowser_chroot (path);
-    g_free (path);
-}
-
-static void
-on_button_go_default (void)
-{
-    gchar *path = get_default_dir ();
-    treebrowser_chroot (path);
-    g_free (path);
+    treebrowser_browse_dir(NULL);
 }
 
 static void
@@ -2496,9 +2303,9 @@ on_addressbar_changed ()
 {
     trace("signal: adressbar changed\n");
 
-    gchar *uri = g_strdup( gtk_entry_get_text (GTK_ENTRY (gtk_bin_get_child( GTK_BIN (addressbar)))));
-    treebrowser_chroot (uri);
-    g_free (uri);
+    // gchar *uri = g_strdup( gtk_entry_get_text (GTK_ENTRY (gtk_bin_get_child( GTK_BIN (addressbar)))));
+    // treebrowser_chroot (uri);
+    // g_free (uri);
 }
 
 static gboolean
@@ -2524,29 +2331,7 @@ on_searchbar_timeout ()
         g_free (searchbar_text);
     searchbar_text = g_strdup (gtk_entry_get_text (GTK_ENTRY (searchbar)));
 
-    trace("starting search: %s (%lu chars, full search at %d chars)\n", searchbar_text, strlen (searchbar_text), CONFIG_FULLSEARCH_WAIT);
-
-    if (strlen (searchbar_text) >= CONFIG_FULLSEARCH_WAIT) {
-        // expand all tree items to search everywhere (this can take a loooooong time)
-        if (! all_expanded)
-        {
-            expand_all ();
-        }
-        all_expanded = TRUE;
-    }
-    else
-    {
-        if (all_expanded)
-        {
-            treeview_clear_expanded ();
-            collapse_all ();
-            load_config_expanded_rows ();  // to make things easy we just load the config setting again
-            treeview_restore_expanded (NULL);
-        }
-        all_expanded = FALSE;
-    }
-
-    treebrowser_chroot (addressbar_last_address);
+    treebrowser_browse_dir (NULL);
     return FALSE;  // stop timeout
 }
 
@@ -2962,8 +2747,7 @@ treeview_update (void *ctx)
 {
     trace("update treeview\n");
 
-    update_rootdirs ();
-    treebrowser_chroot (addressbar_last_address);  // update treeview
+    treebrowser_browse_dir (NULL);
 
     // This function MUST return false because it's called from g_idle_add ()
     return FALSE;

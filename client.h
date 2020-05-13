@@ -6,4 +6,4 @@ typedef struct {
     gboolean folder;
 } BrowseItem;
 
-GSList *        client_browse_items (const gchar *path, guint *length, gboolean sort, GError **error);
+GSList *        client_browse_items (const gchar *path, const gchar *search, GError **error);
