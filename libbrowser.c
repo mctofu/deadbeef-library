@@ -83,7 +83,6 @@ static const gchar *        CONFIG_COLOR_BG_SEL         = NULL;
 static const gchar *        CONFIG_COLOR_FG_SEL         = NULL;
 static gint                 CONFIG_ICON_SIZE            = 24;
 static gint                 CONFIG_FONT_SIZE            = 0;
-static gboolean             CONFIG_SORT_TREEVIEW        = TRUE;
 static gint                 CONFIG_SEARCH_DELAY         = 1000;
 static gint                 CONFIG_FULLSEARCH_WAIT      = 5;
 static gboolean             CONFIG_HIDE_NAVIGATION      = FALSE;
@@ -94,7 +93,6 @@ static gboolean             CONFIG_HIDE_TOOLBAR         = FALSE;
 static DB_misc_t            plugin;
 static DB_functions_t *     deadbeef                    = NULL;
 static ddb_gtkui_t *        gtkui_plugin                = NULL;
-//static uintptr_t            treebrowser_mutex           = NULL;
 
 static GtkWidget *          mainmenuitem                = NULL;
 static GtkWidget *          vbox_playlist               = NULL;
@@ -181,7 +179,6 @@ save_config (void)
     deadbeef->conf_set_int (CONFSTR_FB_SAVE_TREEVIEW,       CONFIG_SAVE_TREEVIEW);
     deadbeef->conf_set_int (CONFSTR_FB_ICON_SIZE,           CONFIG_ICON_SIZE);
     deadbeef->conf_set_int (CONFSTR_FB_FONT_SIZE,           CONFIG_FONT_SIZE);
-    deadbeef->conf_set_int (CONFSTR_FB_SORT_TREEVIEW,       CONFIG_SORT_TREEVIEW);
     deadbeef->conf_set_int (CONFSTR_FB_SEARCH_DELAY,        CONFIG_SEARCH_DELAY);
     deadbeef->conf_set_int (CONFSTR_FB_FULLSEARCH_WAIT,     CONFIG_FULLSEARCH_WAIT);
     deadbeef->conf_set_int (CONFSTR_FB_HIDE_NAVIGATION,     CONFIG_HIDE_NAVIGATION);
@@ -255,7 +252,6 @@ load_config (void)
     CONFIG_SAVE_TREEVIEW        = deadbeef->conf_get_int (CONFSTR_FB_SAVE_TREEVIEW,       TRUE);
     CONFIG_ICON_SIZE            = deadbeef->conf_get_int (CONFSTR_FB_ICON_SIZE,           24);
     CONFIG_FONT_SIZE            = deadbeef->conf_get_int (CONFSTR_FB_FONT_SIZE,           0);
-    CONFIG_SORT_TREEVIEW        = deadbeef->conf_get_int (CONFSTR_FB_SORT_TREEVIEW,       TRUE);
     CONFIG_SEARCH_DELAY         = deadbeef->conf_get_int (CONFSTR_FB_SEARCH_DELAY,        1000);
     CONFIG_FULLSEARCH_WAIT      = deadbeef->conf_get_int (CONFSTR_FB_FULLSEARCH_WAIT,     5);
     CONFIG_HIDE_NAVIGATION      = deadbeef->conf_get_int (CONFSTR_FB_HIDE_NAVIGATION,     FALSE);
@@ -292,7 +288,6 @@ load_config (void)
         "fgcolor_sel:       %s \n"
         "icon_size:         %d \n"
         "font_size:         %d \n"
-        "sort_treeview:     %d \n"
         "search_delay:      %d \n"
         "fullsearch_wait:   %d \n"
         "hide_navigation:   %d \n"
@@ -314,7 +309,6 @@ load_config (void)
         CONFIG_COLOR_FG_SEL,
         CONFIG_ICON_SIZE,
         CONFIG_FONT_SIZE,
-        CONFIG_SORT_TREEVIEW,
         CONFIG_SEARCH_DELAY,
         CONFIG_FULLSEARCH_WAIT,
         CONFIG_HIDE_NAVIGATION,
@@ -437,7 +431,6 @@ on_config_changed (uintptr_t ctx)
     gint        coverart_size   = CONFIG_COVERART_SIZE;
     gboolean    coverart_scale  = CONFIG_COVERART_SCALE;
     gint        icon_size       = CONFIG_ICON_SIZE;
-    gboolean    sort_treeview   = CONFIG_SORT_TREEVIEW;
 
     gchar *     default_path    = g_strdup (CONFIG_DEFAULT_PATH);
     gchar *     bgcolor         = g_strdup (CONFIG_COLOR_BG);
@@ -487,8 +480,7 @@ on_config_changed (uintptr_t ctx)
                 (show_coverart != CONFIG_SHOW_COVERART) ||
                 (show_coverart && (coverart_size != CONFIG_COVERART_SIZE)) ||
                 (show_coverart && (coverart_scale != CONFIG_COVERART_SCALE)) ||
-                (tree_lines != CONFIG_SHOW_TREE_LINES) ||
-                (sort_treeview != CONFIG_SORT_TREEVIEW))
+                (tree_lines != CONFIG_SHOW_TREE_LINES))
             do_update = TRUE;
 
         if (! utils_str_equal (default_path, CONFIG_DEFAULT_PATH))
@@ -886,7 +878,6 @@ create_view_and_model (void)
     // TREEBROWSER_COLUMN_ICON
     gtk_tree_view_append_column (GTK_TREE_VIEW (view), treeview_column_icon);
     gtk_tree_view_column_pack_start (treeview_column_icon, render_icon, TRUE);
-    //gtk_tree_view_column_pack_start (treeview_column_icon, render_dummy, FALSE);
     gtk_tree_view_column_set_attributes (treeview_column_icon, render_icon,
                     "pixbuf", TREEBROWSER_RENDER_ICON, NULL);
     gtk_tree_view_column_set_spacing (treeview_column_icon, 0);
@@ -913,9 +904,7 @@ create_view_and_model (void)
     gtk_tree_view_set_expander_column (GTK_TREE_VIEW (view), TREEBROWSER_COLUMN_ICON);
     gtk_tree_view_set_search_column (GTK_TREE_VIEW (view), TREEBROWSER_COLUMN_NAME);
 
-    //gtk_tree_view_set_rubber_banding (GTK_TREE_VIEW (view), TRUE);
     gtk_tree_view_set_show_expanders (GTK_TREE_VIEW (view), TRUE);
-    //gtk_tree_view_set_level_indentation (GTK_TREE_VIEW (view), 16);
 
     gtk_tree_view_set_row_separator_func (GTK_TREE_VIEW (view), treeview_separator_func,
                     NULL, NULL);
@@ -1009,14 +998,6 @@ create_sidebar (void)
     gtk_box_pack_start (GTK_BOX (sidebar), sidebar_addressbox,  FALSE, TRUE, 1);
     gtk_box_pack_start (GTK_BOX (sidebar), sidebar_toolbar,  FALSE, TRUE, 1);
     gtk_box_pack_start (GTK_BOX (sidebar), scrollwin, TRUE, TRUE, 1);
-
-    // adjust tab-focus
-    /* GList *focus_list = NULL; */
-    /* focus_list = g_list_append (focus_list, sidebar_searchbox); */
-    /* focus_list = g_list_append (focus_list, sidebar_addressbox); */
-    /* focus_list = g_list_append (focus_list, sidebar_toolbar); */
-    /* gtk_container_set_focus_chain (GTK_CONTAINER (sidebar), focus_list); */
-    /* g_list_free (focus_list); */
 
     g_signal_connect (selection,    "changed",              G_CALLBACK (on_treeview_changed),               NULL);
     g_signal_connect (treeview,     "button-press-event",   G_CALLBACK (on_treeview_mouseclick_press),      selection);
@@ -1264,7 +1245,6 @@ create_settings_dialog ()
 
     GtkWidget *frame_tree            = gtk_frame_new (_(" Tree view  "));
     GtkWidget *grid_tree             = gtk_grid_new ();
-    GtkWidget *check_sort_tree       = gtk_check_button_new_with_mnemonic (_("Sort tree by _name"));
     GtkWidget *check_show_treelines  = gtk_check_button_new_with_mnemonic (_("Show tree_lines"));
 
     GtkWidget *frame_colors          = gtk_frame_new (_(" Font & Colors  "));
@@ -1293,7 +1273,6 @@ create_settings_dialog ()
     gtk_widget_set_tooltip_text (check_show_coverart,     _("Show coverart icons in the treeview. Default icons are used if this feature is disabled."));
     gtk_widget_set_tooltip_text (spin_coverart_size,     _("Set the size for coverart icons."));
     gtk_widget_set_tooltip_text (check_coverart_scale,   _("If enabled, coverart icons will be scaled and padded if necessary to generate a square icon. If disabled, coverart icons can be wider than normal if the original image is non-square."));
-    gtk_widget_set_tooltip_text (check_sort_tree,        _("Sort treeview contents by name. If disabled, contents will be sorted by modification date (recently-changed files on top)."));
     gtk_widget_set_tooltip_text (check_show_treelines,   _("Show lines in the treeview to indicate different levels of subdirectories."));
     gtk_widget_set_tooltip_text (spin_font_size,         _("Set the font size to be used in the treeview. May need a restart of the player."));
     gtk_widget_set_tooltip_text (button_color_bg,        _("Set the background color to be used in the treeview. May need a restart of the player."));
@@ -1450,9 +1429,6 @@ create_settings_dialog ()
     gtk_container_add (GTK_CONTAINER (frame_tree), grid_tree);
     gtk_box_pack_start (GTK_BOX (page5), frame_tree, FALSE, TRUE, 0);
 
-    // CONFIG_SORT_TREEVIEW
-    gtk_grid_attach (GTK_GRID (grid_tree), check_sort_tree, 0, 0, 2, 1);
-
     // CONFIG_SHOW_TREE_LINES
     gtk_grid_attach (GTK_GRID (grid_tree), check_show_treelines, 0, 1, 2, 1);
 
@@ -1510,7 +1486,6 @@ create_settings_dialog ()
         gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin_coverart_size), CONFIG_COVERART_SIZE);
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_coverart_scale), CONFIG_COVERART_SCALE);
 
-        gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_sort_tree), CONFIG_SORT_TREEVIEW);
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_show_treelines), CONFIG_SHOW_TREE_LINES);
         gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin_font_size), CONFIG_FONT_SIZE);
         if (gdk_rgba_parse (&color, CONFIG_COLOR_BG))
@@ -1556,7 +1531,6 @@ create_settings_dialog ()
         CONFIG_COVERART_SIZE        = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spin_coverart_size));
         CONFIG_COVERART_SCALE       = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_coverart_scale));
 
-        CONFIG_SORT_TREEVIEW        = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_sort_tree));
         CONFIG_SHOW_TREE_LINES      = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_show_treelines));
         CONFIG_FONT_SIZE            = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spin_font_size));
         CONFIG_COLOR_BG             = gtk_color_chooser_get_hex (GTK_COLOR_CHOOSER (button_color_bg));
@@ -2969,8 +2943,6 @@ static const char settings_dlg[] =
                                                "spinbtn[100,5000,100] " CONFSTR_FB_SEARCH_DELAY         " 1000 ;\n"
     "property \"Wait for N chars until full search (fully expand tree)\" "
                                                "spinbtn[1,10,1]       " CONFSTR_FB_FULLSEARCH_WAIT      " 5 ;\n"
-    "property \"Sort contents by name (otherwise by modification date) \" "
-                                               "checkbox "              CONFSTR_FB_SORT_TREEVIEW        " 1 ;\n"
     "property \"Show tree lines\"               checkbox "              CONFSTR_FB_SHOW_TREE_LINES      " 0 ;\n"
     "property \"Font size: \"                   spinbtn[0,32,1] "       CONFSTR_FB_FONT_SIZE            " 0 ;\n"
     "property \"Icon size (non-coverart): \"    spinbtn[24,48,2] "      CONFSTR_FB_ICON_SIZE            " 24 ;\n"
