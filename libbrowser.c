@@ -69,7 +69,6 @@
 /* Options changeable by user */
 static gboolean             CONFIG_ENABLED              = TRUE;
 static gboolean             CONFIG_HIDDEN               = FALSE;
-static const gchar *        CONFIG_DEFAULT_PATH         = NULL;
 static gboolean             CONFIG_SHOW_ICONS           = TRUE;
 static gboolean             CONFIG_SHOW_TREE_LINES      = FALSE;
 static gint                 CONFIG_WIDTH                = 220;
@@ -185,8 +184,6 @@ save_config (void)
     deadbeef->conf_set_int (CONFSTR_FB_HIDE_SEARCH,         CONFIG_HIDE_SEARCH);
     deadbeef->conf_set_int (CONFSTR_FB_HIDE_TOOLBAR,        CONFIG_HIDE_TOOLBAR);
 
-    if (CONFIG_DEFAULT_PATH)
-        deadbeef->conf_set_str (CONFSTR_FB_DEFAULT_PATH,    CONFIG_DEFAULT_PATH);
     if (CONFIG_COLOR_BG)
         deadbeef->conf_set_str (CONFSTR_FB_COLOR_BG,        CONFIG_COLOR_BG);
     if (CONFIG_COLOR_FG)
@@ -228,8 +225,6 @@ load_config (void)
 {
     trace("load config\n");
 
-    if (CONFIG_DEFAULT_PATH)
-        g_free ((gchar*) CONFIG_DEFAULT_PATH);
     if (CONFIG_COLOR_BG)
         g_free ((gchar*) CONFIG_COLOR_BG);
     if (CONFIG_COLOR_FG)
@@ -258,7 +253,6 @@ load_config (void)
     CONFIG_HIDE_SEARCH          = deadbeef->conf_get_int (CONFSTR_FB_HIDE_SEARCH,         FALSE);
     CONFIG_HIDE_TOOLBAR         = deadbeef->conf_get_int (CONFSTR_FB_HIDE_TOOLBAR,        FALSE);
 
-    CONFIG_DEFAULT_PATH         = g_strdup (deadbeef->conf_get_str_fast (CONFSTR_FB_DEFAULT_PATH,   DEFAULT_FB_DEFAULT_PATH));
     CONFIG_COLOR_BG             = g_strdup (deadbeef->conf_get_str_fast (CONFSTR_FB_COLOR_BG,       ""));
     CONFIG_COLOR_FG             = g_strdup (deadbeef->conf_get_str_fast (CONFSTR_FB_COLOR_FG,       ""));
     CONFIG_COLOR_BG_SEL         = g_strdup (deadbeef->conf_get_str_fast (CONFSTR_FB_COLOR_BG_SEL,   ""));
@@ -274,7 +268,6 @@ load_config (void)
     trace("config loaded - new settings: \n"
         "enabled:           %d \n"
         "hidden:            %d \n"
-        "defaultpath:       %s \n"
         "show_icons:        %d \n"
         "tree_lines:        %d \n"
         "width:             %d \n"
@@ -295,7 +288,6 @@ load_config (void)
         "hide_toolbar:      %d \n",
         CONFIG_ENABLED,
         CONFIG_HIDDEN,
-        CONFIG_DEFAULT_PATH,
         CONFIG_SHOW_ICONS,
         CONFIG_SHOW_TREE_LINES,
         CONFIG_WIDTH,
@@ -357,15 +349,6 @@ update_rootdirs ()
     trace("update rootdirs\n");
 
     gtk_combo_box_text_remove_all (GTK_COMBO_BOX_TEXT (addressbar));
-
-    gchar **config_rootdirs;
-    config_rootdirs = g_strsplit (CONFIG_DEFAULT_PATH, ";", 0);
-
-    for (int i = 0; i < g_strv_length (config_rootdirs); i++)
-    {
-        gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (addressbar), NULL, g_strdup (config_rootdirs[i]));
-    }
-    g_strfreev (config_rootdirs);
 
     gtk_combo_box_set_active (GTK_COMBO_BOX (addressbar), 0);
 }
@@ -432,7 +415,6 @@ on_config_changed (uintptr_t ctx)
     gboolean    coverart_scale  = CONFIG_COVERART_SCALE;
     gint        icon_size       = CONFIG_ICON_SIZE;
 
-    gchar *     default_path    = g_strdup (CONFIG_DEFAULT_PATH);
     gchar *     bgcolor         = g_strdup (CONFIG_COLOR_BG);
     gchar *     fgcolor         = g_strdup (CONFIG_COLOR_BG);
     gchar *     bgcolor_sel     = g_strdup (CONFIG_COLOR_BG_SEL);
@@ -483,11 +465,8 @@ on_config_changed (uintptr_t ctx)
                 (tree_lines != CONFIG_SHOW_TREE_LINES))
             do_update = TRUE;
 
-        if (! utils_str_equal (default_path, CONFIG_DEFAULT_PATH))
-            do_update = TRUE;
     }
 
-    g_free (default_path);
     g_free (bgcolor);
     g_free (fgcolor);
     g_free (bgcolor_sel);
@@ -1030,158 +1009,11 @@ create_sidebar (void)
 }
 
 #if GTK_CHECK_VERSION(3,16,0)
-static void settings_update_paths (GtkGrid *grid, gchar *config_paths);
-static gchar* settings_get_paths(GtkGrid *grid);
-
 static void
 on_settings_radio_filter_toggled (GtkToggleButton *togglebutton, gpointer user_data)
 {
     gboolean enabled = gtk_toggle_button_get_active (togglebutton);
     gtk_widget_set_sensitive (GTK_WIDGET (user_data), enabled);
-}
-
-static void
-on_settings_path_remove (GtkButton *button, gpointer label)
-{
-    GtkWidget *grid;
-    const gchar *path, *dirname;
-
-    grid = gtk_widget_get_parent (GTK_WIDGET (label));
-    path = gtk_label_get_text (GTK_LABEL (label));
-
-    int numrows = gtk_grid_get_number_of_rows (GTK_GRID (grid), 0);  // get rows with labels
-    for (int row = 0; row < numrows; row++)
-    {
-        label = gtk_grid_get_child_at (GTK_GRID (grid), 0, row);
-        if (label == NULL)
-            break;
-
-        dirname = gtk_label_get_text (GTK_LABEL (label));
-
-        if (! g_ascii_strncasecmp (path, dirname, 256))
-        {
-            gtk_grid_remove_row (GTK_GRID (grid), row);
-            gtk_widget_show_all (GTK_WIDGET (grid));
-        }
-    }
-}
-
-static void
-on_settings_path_add (GtkButton *button, gpointer grid)
-{
-    GtkWidget *dialog;
-    GtkWidget *label, *button_remove;
-    gchar *dirname;
-
-    dialog = gtk_file_chooser_dialog_new (
-                "Add Directory",
-                GTK_WINDOW (gtkui_plugin->get_mainwin ()),
-                GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-                _("_Cancel"), GTK_RESPONSE_CANCEL,
-                _("_Open"), GTK_RESPONSE_ACCEPT,
-                NULL);
-
-    if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
-    {
-        GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
-        dirname = gtk_file_chooser_get_filename (chooser);
-
-        int row = gtk_grid_get_number_of_rows (GTK_GRID (grid), 0);  // get rows with labels
-        gtk_grid_insert_row (GTK_GRID (grid), row);
-
-        label = gtk_label_new (dirname);
-#if GTK_CHECK_VERSION(3,16,0)
-        gtk_label_set_xalign (GTK_LABEL (label), 0.);
-#endif
-        gtk_grid_attach (GTK_GRID (grid), label, 0, row, 1, 1);
-        gtk_widget_set_hexpand (label, TRUE);
-
-        button_remove = GTK_WIDGET (gtk_tool_button_new (NULL, "DEL"));
-        gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button_remove), "gtk-delete");
-        gtk_grid_attach (GTK_GRID (grid), button_remove, 1, row, 1, 1);
-        g_signal_connect (button, "clicked", G_CALLBACK (on_settings_path_remove), label);
-
-        gtk_widget_show_all (GTK_WIDGET (grid));
-    }
-
-    gtk_widget_destroy (dialog);
-}
-
-static gchar *
-settings_get_paths(GtkGrid *grid)
-{
-    GtkWidget *label;
-    gchar *paths, *newpaths;
-    const gchar *dirname;
-
-    paths = NULL;
-
-    int numrows = gtk_grid_get_number_of_rows (GTK_GRID (grid), 0);  // get rows with labels
-    for (int row = 0; row < numrows; row++)
-    {
-        label = gtk_grid_get_child_at (grid, 0, row);
-        if (label == NULL)
-            break;
-
-        dirname = gtk_label_get_text (GTK_LABEL (label));
-
-        if (paths == NULL)
-            paths = g_strdup (dirname);
-        else
-        {
-            newpaths = g_strconcat (paths, ";", dirname, NULL);
-            g_free (paths);
-            paths = newpaths;
-        }
-    }
-
-    return paths;
-}
-
-static void
-settings_update_paths (GtkGrid *grid, gchar *config_paths)
-{
-    // clean the grid
-    GList *children, *iter;
-    children = gtk_container_get_children (GTK_CONTAINER (grid));
-    for (iter = children; iter != NULL; iter = g_list_next (iter))
-        gtk_widget_destroy (GTK_WIDGET (iter->data));
-    g_list_free (children);
-
-    GtkWidget *label, *button;
-    gchar **path_list;
-    path_list = g_strsplit (config_paths, ";", 0);
-
-    int row;
-    for (row = 0; row < g_strv_length (path_list); row++)
-    {
-        if (strlen (path_list[row]) == 0)
-            continue;
-
-        label = gtk_label_new (path_list[row]);
-#if GTK_CHECK_VERSION(3,16,0)
-        gtk_label_set_xalign (GTK_LABEL (label), 0.);
-#endif
-        gtk_grid_attach (grid, label, 0, row, 1, 1);
-        gtk_widget_set_hexpand (label, TRUE);
-
-        button = GTK_WIDGET (gtk_tool_button_new (NULL, "DEL"));
-        gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "gtk-delete");
-        gtk_grid_attach (grid, button, 1, row, 1, 1);
-        g_signal_connect (button, "clicked", G_CALLBACK (on_settings_path_remove), label);
-        gtk_widget_set_tooltip_text (button, _("Remove this path from the list."));
-    }
-    g_strfreev (path_list);
-
-    button = GTK_WIDGET (gtk_tool_button_new (NULL, "ADD"));
-    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (button), "gtk-add");
-    gtk_grid_attach (grid, button, 1, row+1, 1, 1);
-    g_signal_connect (button, "clicked", G_CALLBACK (on_settings_path_add), grid);
-    gtk_widget_set_tooltip_text (button, _("Add another path to the list. Paths listed here will be added to the navigation/address bar drop-down list, and the first path in the list will be used on startup."));
-
-    gtk_widget_show_all (GTK_WIDGET (grid));
-
-    g_free (config_paths);
 }
 
 static void
@@ -1206,7 +1038,6 @@ create_settings_dialog ()
     GtkWidget *page2                = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *page3                = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
     GtkWidget *page4                = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-    GtkWidget *page5                = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
 
     GtkWidget *frame_plugin         = gtk_frame_new (_(" Plugin  "));
     GtkWidget *grid_plugin          = gtk_grid_new ();
@@ -1219,9 +1050,6 @@ create_settings_dialog ()
     GtkWidget *check_hide_nav       = gtk_check_button_new_with_mnemonic (_("Hide _navigation area"));
     GtkWidget *check_hide_search    = gtk_check_button_new_with_mnemonic (_("Hide _search bar"));
     GtkWidget *check_hide_tools     = gtk_check_button_new_with_mnemonic (_("Hide _toolbar"));
-
-    GtkWidget *frame_paths          = gtk_frame_new (_(" Default paths  "));
-    GtkWidget *grid_paths           = gtk_grid_new ();
 
     GtkWidget *frame_search         = gtk_frame_new (_(" Search  "));
     GtkWidget *grid_search          = gtk_grid_new ();
@@ -1284,11 +1112,9 @@ create_settings_dialog ()
     gtk_container_set_border_width (GTK_CONTAINER (page2), 8);
     gtk_container_set_border_width (GTK_CONTAINER (page3), 8);
     gtk_container_set_border_width (GTK_CONTAINER (page4), 8);
-    gtk_container_set_border_width (GTK_CONTAINER (page5), 8);
 
     gtk_container_set_border_width (GTK_CONTAINER (grid_plugin),    8);
     gtk_container_set_border_width (GTK_CONTAINER (grid_layout),    8);
-    gtk_container_set_border_width (GTK_CONTAINER (grid_paths),     8);
     gtk_container_set_border_width (GTK_CONTAINER (grid_search),    8);
     gtk_container_set_border_width (GTK_CONTAINER (grid_icons),     8);
     gtk_container_set_border_width (GTK_CONTAINER (grid_coverart),  8);
@@ -1297,7 +1123,6 @@ create_settings_dialog ()
 
     gtk_grid_set_row_spacing (GTK_GRID (grid_plugin),    2);
     gtk_grid_set_row_spacing (GTK_GRID (grid_layout),    2);
-    gtk_grid_set_row_spacing (GTK_GRID (grid_paths),     0);
     gtk_grid_set_row_spacing (GTK_GRID (grid_search),    2);
     gtk_grid_set_row_spacing (GTK_GRID (grid_icons),     2);
     gtk_grid_set_row_spacing (GTK_GRID (grid_coverart),  2);
@@ -1363,25 +1188,13 @@ create_settings_dialog ()
     // CONFIG_HIDE_TOOLBAR
     gtk_grid_attach (GTK_GRID (grid_layout), check_hide_tools, 0, 3, 2, 1);
 
-
     // page 2
 
     gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page2, NULL);
-    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page2, _("Directories"));
-
-    gtk_container_add (GTK_CONTAINER (frame_paths), grid_paths);
-    gtk_box_pack_start (GTK_BOX (page2), frame_paths, FALSE, TRUE, 0);
-
-    // CONFIG_DEFAULT_PATH
-
-
-    // page 3
-
-    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page3, NULL);
-    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page3, _("Filtering"));
+    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page2, _("Filtering"));
 
     gtk_container_add (GTK_CONTAINER (frame_search), grid_search);
-    gtk_box_pack_start (GTK_BOX (page3), frame_search, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (page2), frame_search, FALSE, TRUE, 0);
 
     // CONFIG_SEARCH_DELAY
     gtk_grid_attach (GTK_GRID (grid_search), lbl_search_delay, 0, 0, 1, 1);
@@ -1392,13 +1205,13 @@ create_settings_dialog ()
     gtk_grid_attach (GTK_GRID (grid_search), spin_fullsearch_wait, 1, 1, 1, 1);
 
 
-    // page 4
+    // page 3
 
-    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page4, NULL);
-    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page4, _("Content"));
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page3, NULL);
+    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page3, _("Content"));
 
     gtk_container_add (GTK_CONTAINER (frame_icons), grid_icons);
-    gtk_box_pack_start (GTK_BOX (page4), frame_icons, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (page3), frame_icons, FALSE, TRUE, 0);
 
     // CONFIG_SHOW_ICONS
     gtk_grid_attach (GTK_GRID (grid_icons), check_show_icons, 0, 0, 2, 1);
@@ -1408,7 +1221,7 @@ create_settings_dialog ()
     gtk_grid_attach (GTK_GRID (grid_icons), spin_icon_size, 1, 1, 1, 1);
 
     gtk_container_add (GTK_CONTAINER (frame_coverart), grid_coverart);
-    gtk_box_pack_start (GTK_BOX (page4), frame_coverart, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (page3), frame_coverart, FALSE, TRUE, 0);
 
     // CONFIG_SHOW_COVERART
     gtk_grid_attach (GTK_GRID (grid_coverart), check_show_coverart, 0, 0, 2, 1);
@@ -1421,19 +1234,19 @@ create_settings_dialog ()
     gtk_grid_attach (GTK_GRID (grid_coverart), check_coverart_scale, 0, 3, 2, 1);
 
 
-    // page 5
+    // page 4
 
-    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page5, NULL);
-    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page5, _("Look & Feel"));
+    gtk_notebook_append_page (GTK_NOTEBOOK (notebook), page4, NULL);
+    gtk_notebook_set_tab_label_text (GTK_NOTEBOOK (notebook), page4, _("Look & Feel"));
 
     gtk_container_add (GTK_CONTAINER (frame_tree), grid_tree);
-    gtk_box_pack_start (GTK_BOX (page5), frame_tree, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (page4), frame_tree, FALSE, TRUE, 0);
 
     // CONFIG_SHOW_TREE_LINES
     gtk_grid_attach (GTK_GRID (grid_tree), check_show_treelines, 0, 1, 2, 1);
 
     gtk_container_add (GTK_CONTAINER (frame_colors), grid_colors);
-    gtk_box_pack_start (GTK_BOX (page5), frame_colors, FALSE, TRUE, 0);
+    gtk_box_pack_start (GTK_BOX (page4), frame_colors, FALSE, TRUE, 0);
 
     // CONFIG_FONT_SIZE
     gtk_grid_attach (GTK_GRID (grid_colors), lbl_font_size, 0, 0, 1, 1);
@@ -1475,8 +1288,6 @@ create_settings_dialog ()
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_hide_search), CONFIG_HIDE_SEARCH);
         gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (check_hide_tools), CONFIG_HIDE_TOOLBAR);
 
-        settings_update_paths (GTK_GRID (grid_paths), g_strdup (CONFIG_DEFAULT_PATH));
-
         gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin_search_delay), CONFIG_SEARCH_DELAY);
         gtk_spin_button_set_value (GTK_SPIN_BUTTON (spin_fullsearch_wait), CONFIG_FULLSEARCH_WAIT);
 
@@ -1504,7 +1315,6 @@ create_settings_dialog ()
         trace("read settings, response=%d\n", response);
 
         // read out settings
-        g_free ((gchar*) CONFIG_DEFAULT_PATH);
         g_free ((gchar*) CONFIG_COLOR_BG);
         g_free ((gchar*) CONFIG_COLOR_FG);
         g_free ((gchar*) CONFIG_COLOR_BG_SEL);
@@ -1518,9 +1328,6 @@ create_settings_dialog ()
         CONFIG_HIDE_NAVIGATION      = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_hide_nav));
         CONFIG_HIDE_SEARCH          = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_hide_search));
         CONFIG_HIDE_TOOLBAR         = gtk_toggle_button_get_active (GTK_TOGGLE_BUTTON (check_hide_tools));
-
-        CONFIG_DEFAULT_PATH         = settings_get_paths (GTK_GRID (grid_paths));
-        trace("defpath: %s\n",CONFIG_DEFAULT_PATH);
 
         CONFIG_SEARCH_DELAY         = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spin_search_delay));
         CONFIG_FULLSEARCH_WAIT      = gtk_spin_button_get_value (GTK_SPIN_BUTTON (spin_fullsearch_wait));
@@ -1910,8 +1717,6 @@ treebrowser_browse_dir (gpointer directory)
 {
     trace("browse directory: %s\n", (gchar*) directory);
 
-    //deadbeef->mutex_lock (treebrowser_mutex);
-
     gtk_tree_store_clear (treestore);
 
     // freeze the treeview during update to improve performance
@@ -1920,8 +1725,6 @@ treebrowser_browse_dir (gpointer directory)
     gtk_widget_thaw_child_notify (treeview);
 
     treeview_restore_expanded (NULL);
-
-    //deadbeef->mutex_unlock (treebrowser_mutex);
 }
 
 static gboolean
@@ -2802,9 +2605,6 @@ libbrowser_stop (void)
 
     save_config ();
 
-    if (CONFIG_DEFAULT_PATH)
-        g_free ((gchar*) CONFIG_DEFAULT_PATH);
-
     return 0;
 }
 
@@ -2938,7 +2738,6 @@ libbrowser_disconnect (void)
 
 
 static const char settings_dlg[] =
-    "property \"Default path: \"                entry "                 CONFSTR_FB_DEFAULT_PATH         " \"" DEFAULT_FB_DEFAULT_PATH   "\" ;\n"
     "property \"Search delay (do not update tree while typing)\" "
                                                "spinbtn[100,5000,100] " CONFSTR_FB_SEARCH_DELAY         " 1000 ;\n"
     "property \"Wait for N chars until full search (fully expand tree)\" "
