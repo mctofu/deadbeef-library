@@ -344,16 +344,6 @@ get_uris_from_selection (gpointer data, gpointer userdata)
 }
 
 static void
-update_rootdirs ()
-{
-    trace("update rootdirs\n");
-
-    gtk_combo_box_text_remove_all (GTK_COMBO_BOX_TEXT (addressbar));
-
-    gtk_combo_box_set_active (GTK_COMBO_BOX (addressbar), 0);
-}
-
-static void
 collapse_all ()
 {
     trace("collapse all rows\n");
@@ -1348,7 +1338,6 @@ create_settings_dialog ()
         deadbeef->conf_unlock ();
 
         save_config ();
-        update_rootdirs ();
         treeview_update (NULL);
         deadbeef->sendmessage (DB_EV_CONFIGCHANGED, 0, 0, 0);
     }
@@ -1481,18 +1470,6 @@ add_uri_to_playlist (GList *uri_list, int index, int append, int threaded)
     {
         add_uri_to_playlist_worker (uri_list);
     }
-}
-
-/* Get default dir from config, use home as fallback */
-static gchar *
-get_default_dir (void)
-{
-    const gchar *path = gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT (addressbar));
-
-    if (g_file_test (path, G_FILE_TEST_EXISTS))
-        return g_strdup (path);
-
-    return g_strdup (g_get_user_special_dir (G_USER_DIRECTORY_MUSIC));
 }
 
 /* Try to get icon from cache, update cache if not found or original is newer */
@@ -1676,10 +1653,14 @@ treeview_restore_expanded (gpointer parent)
                         TREEBROWSER_COLUMN_URI, &uri, -1);
         if (treeview_check_expanded (uri))
         {
+            trace("treeview_restore_expanded\n");
+            flag_on_expand_refresh = TRUE;
             gtk_tree_view_expand_row (GTK_TREE_VIEW (treeview),
                         gtk_tree_model_get_path (GTK_TREE_MODEL (treestore), &i),
                         FALSE);
             treebrowser_browse (uri, &i);
+            flag_on_expand_refresh = FALSE;
+            trace("treeview_restore_expanded_complete\n");
         }
 
         valid = gtk_tree_model_iter_next (GTK_TREE_MODEL (treestore), &i);
@@ -1700,15 +1681,6 @@ treebrowser_checkdir (const gchar *directory)
 {
     gboolean is_dir = g_file_test (directory, G_FILE_TEST_IS_DIR);
     return is_dir;
-}
-
-/* Change root directory of treebrowser */
-static void
-treebrowser_chroot (gchar *directory)
-{
-    trace("chroot to directory: %s\n", directory);
-
-    treebrowser_browse_dir (NULL);  // use addressbar
 }
 
 /* Browse given directory - update contents and fill in the treeview */
@@ -1905,6 +1877,7 @@ on_menu_add_new (GtkMenuItem *menuitem, GList *uri_list)
 static void
 on_menu_refresh (GtkMenuItem *menuitem, gpointer *user_data)
 {
+    trace("on_menu_refresh\n");
     treebrowser_browse_dir (NULL);
 }
 
@@ -2072,6 +2045,7 @@ on_button_replace_current (void)
 static void
 on_button_refresh (void)
 {
+    trace("on_menu_refresh\n");
     treebrowser_browse_dir(NULL);
 }
 
@@ -2079,10 +2053,6 @@ static void
 on_addressbar_changed ()
 {
     trace("signal: adressbar changed\n");
-
-    // gchar *uri = g_strdup( gtk_entry_get_text (GTK_ENTRY (gtk_bin_get_child( GTK_BIN (addressbar)))));
-    // treebrowser_chroot (uri);
-    // g_free (uri);
 }
 
 static gboolean
@@ -2108,6 +2078,7 @@ on_searchbar_timeout ()
         g_free (searchbar_text);
     searchbar_text = g_strdup (gtk_entry_get_text (GTK_ENTRY (searchbar)));
 
+    trace("on_searchbar_timeout\n");
     treebrowser_browse_dir (NULL);
     return FALSE;  // stop timeout
 }
@@ -2477,6 +2448,7 @@ on_treeview_row_expanded (GtkWidget *widget, GtkTreeIter *iter,
     if (flag_on_expand_refresh == FALSE)
     {
         flag_on_expand_refresh = TRUE;
+        trace("on_treeview_row_expanded\n");
         treebrowser_browse (uri, iter);
         gtk_tree_view_expand_row (GTK_TREE_VIEW (treeview), path, FALSE);
         flag_on_expand_refresh = FALSE;
@@ -2549,8 +2521,6 @@ plugin_init (void)
 
     if (! expanded_rows)
         expanded_rows = g_slist_alloc ();
-
-    //treebrowser_mutex = deadbeef->mutex_create ();
 
     treeview_update (NULL);
 

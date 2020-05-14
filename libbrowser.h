@@ -109,7 +109,6 @@ static void         create_sidebar (void);
 static void         create_settings_dialog (void);
 #endif
 
-//static void         add_single_uri_to_playlist (gchar *uri, int plt);
 static void         add_uri_to_playlist_worker (void *data);
 static void         add_uri_to_playlist (GList *uri_list, int plt, int append, int threaded);
 
@@ -119,7 +118,6 @@ static void         treeview_clear_expanded (void);
 static void         treeview_restore_expanded (gpointer parent);
 static gboolean     treeview_separator_func (GtkTreeModel *model, GtkTreeIter *iter, gpointer data);
 static gboolean     treebrowser_checkdir (const gchar *directory);
-static void         treebrowser_chroot(gchar *directory);
 static void         treebrowser_browse_dir (gpointer directory);
 static gboolean     treebrowser_browse (gchar *directory, gpointer parent);
 
