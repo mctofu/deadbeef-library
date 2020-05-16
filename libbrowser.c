@@ -898,7 +898,7 @@ create_sidebar (void)
     trace("create sidebar\n");
 
     GtkWidget           *scrollwin;
-    GtkWidget           *wid, *button_go;
+    GtkWidget           *wid;
 #if !GTK_CHECK_VERSION(3,6,0)
     GtkWidget           *button_clear;
 #endif
@@ -917,8 +917,6 @@ create_sidebar (void)
 #else
     searchbar           = gtk_search_entry_new ();
 #endif
-    button_go           = gtk_button_new_with_label (_("Go!"));
-
     selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (treeview));
 
     gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrollwin),
@@ -928,7 +926,7 @@ create_sidebar (void)
     gtk_toolbar_set_style (GTK_TOOLBAR (sidebar_toolbar), GTK_TOOLBAR_ICONS);
 
     wid = GTK_WIDGET (gtk_tool_button_new (NULL, ""));
-    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "gtk-refresh");
+    gtk_tool_button_set_icon_name (GTK_TOOL_BUTTON (wid), "view-refresh");
     gtk_tool_item_set_tooltip_text (GTK_TOOL_ITEM (wid), _("Refresh current directory"));
     g_signal_connect (wid, "clicked", G_CALLBACK (on_button_refresh), NULL);
     gtk_container_add (GTK_CONTAINER (sidebar_toolbar), wid);
@@ -956,7 +954,6 @@ create_sidebar (void)
     gtk_container_add (GTK_CONTAINER (scrollwin), treeview);
 
     gtk_box_pack_start (GTK_BOX (sidebar_addressbox), addressbar, TRUE, TRUE, 1);
-    gtk_box_pack_start (GTK_BOX (sidebar_addressbox), button_go,  FALSE, TRUE, 0);
 
     gtk_box_pack_start (GTK_BOX (sidebar_searchbox), searchbar, TRUE, TRUE, 1);
 #if !GTK_CHECK_VERSION(3,6,0)
@@ -975,13 +972,7 @@ create_sidebar (void)
     g_signal_connect (treeview,     "key-press-event",      G_CALLBACK (on_treeview_key_press),             selection);
     g_signal_connect (treeview,     "row-collapsed",        G_CALLBACK (on_treeview_row_collapsed),         NULL);
     g_signal_connect (treeview,     "row-expanded",         G_CALLBACK (on_treeview_row_expanded),          NULL);
-    g_signal_connect (button_go,    "clicked",              G_CALLBACK (on_addressbar_changed),             NULL);
-#if !GTK_CHECK_VERSION(3,6,0)
-    g_signal_connect (searchbar,    "changed",              G_CALLBACK (on_searchbar_changed),              NULL);
-    g_signal_connect (button_clear, "clicked",              G_CALLBACK (on_searchbar_cleared),              NULL);
-#else
     g_signal_connect (searchbar,    "search-changed",       G_CALLBACK (on_searchbar_changed),              NULL);
-#endif
 
     gtk_widget_show_all (sidebar);
 
