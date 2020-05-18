@@ -53,8 +53,6 @@
 #define     CONFSTR_FB_HIDE_SEARCH          "libbrowser.hide_search"
 #define     CONFSTR_FB_HIDE_TOOLBAR         "libbrowser.hide_toolbar"
 
-#define     DEFAULT_FB_DEFAULT_PATH         ""
-
 /* Treebrowser setup */
 enum
 {
@@ -145,11 +143,8 @@ static void         on_menu_config (GtkMenuItem *menuitem, gpointer user_data);
 static void         on_button_add_current (void);
 static void         on_button_replace_current (void);
 static void         on_button_refresh (void);
-static void         on_addressbar_changed (void);
+static void         on_browse_by_box_changed (void);
 static void         on_searchbar_changed (void);
-#if !GTK_CHECK_VERSION(3,6,0)
-static void         on_searchbar_cleared (void);
-#endif
 
 static void         treeview_activate (GtkTreePath *path, GtkTreeViewColumn *column, GtkTreeSelection *selection,
                     gboolean create, gboolean append, gboolean play);

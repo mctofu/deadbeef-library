@@ -62,9 +62,8 @@
 /* GLOBAL VARIABLES */
 /*------------------*/
 
-
-/* Hard-coded options */
-// none so far...
+static const gchar*         BROWSE_BY_FOLDER            = "folder";
+static const gchar*         BROWSE_BY_ARTIST_ALBUM      = "artist/album";
 
 /* Options changeable by user */
 static gboolean             CONFIG_ENABLED              = TRUE;
@@ -100,12 +99,12 @@ static GtkWidget *          treeview                    = NULL;
 static GtkTreeStore *       treestore                   = NULL;
 static GtkWidget *          sidebar                     = NULL;
 static GtkWidget *          sidebar_searchbox           = NULL;
-static GtkWidget *          sidebar_addressbox          = NULL;
+static GtkWidget *          sidebar_browsebox           = NULL;
 static GtkWidget *          sidebar_toolbar             = NULL;
 static GtkWidget *          toolbar_button_add          = NULL;
 static GtkWidget *          toolbar_button_replace      = NULL;
-static GtkWidget *          addressbar                  = NULL;
-static gchar *              addressbar_last_address     = NULL;
+static GtkWidget *          browse_by_box               = NULL;
+static gint                 browse_by_box_active        = 0;
 static GtkWidget *          searchbar                   = NULL;
 static gchar *              searchbar_text              = NULL;
 static GtkTreeViewColumn *  treeview_column_icon        = NULL;
@@ -430,9 +429,9 @@ on_config_changed (uintptr_t ctx)
             gtk_widget_show (sidebar);
 
         if (CONFIG_HIDE_NAVIGATION)
-            gtk_widget_hide (sidebar_addressbox);
+            gtk_widget_hide (sidebar_browsebox);
         else
-            gtk_widget_show (sidebar_addressbox);
+            gtk_widget_show (sidebar_browsebox);
 
         if (CONFIG_HIDE_SEARCH)
             gtk_widget_hide (sidebar_searchbox);
@@ -899,24 +898,16 @@ create_sidebar (void)
 
     GtkWidget           *scrollwin;
     GtkWidget           *wid;
-#if !GTK_CHECK_VERSION(3,6,0)
-    GtkWidget           *button_clear;
-#endif
     GtkTreeSelection    *selection;
 
     treeview            = create_view_and_model ();
     scrollwin           = gtk_scrolled_window_new (NULL, NULL);
     sidebar             = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
     sidebar_searchbox   = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-    sidebar_addressbox  = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-    addressbar          = gtk_combo_box_text_new_with_entry ();
+    sidebar_browsebox   = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
+    browse_by_box       = gtk_combo_box_text_new ();
     sidebar_toolbar     = gtk_toolbar_new ();
-#if !GTK_CHECK_VERSION(3,6,0)
-    searchbar           = gtk_entry_new ();
-    button_clear        = gtk_button_new_with_label (_("Clear"));
-#else
     searchbar           = gtk_search_entry_new ();
-#endif
     selection = gtk_tree_view_get_selection (GTK_TREE_VIEW (treeview));
 
     gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrollwin),
@@ -953,15 +944,17 @@ create_sidebar (void)
 
     gtk_container_add (GTK_CONTAINER (scrollwin), treeview);
 
-    gtk_box_pack_start (GTK_BOX (sidebar_addressbox), addressbar, TRUE, TRUE, 1);
+    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_FOLDER);
+    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_ARTIST_ALBUM);
+
+    gtk_combo_box_set_active (GTK_COMBO_BOX (browse_by_box), 0);
+
+    gtk_box_pack_start (GTK_BOX (sidebar_browsebox), browse_by_box, TRUE, TRUE, 1);
 
     gtk_box_pack_start (GTK_BOX (sidebar_searchbox), searchbar, TRUE, TRUE, 1);
-#if !GTK_CHECK_VERSION(3,6,0)
-    gtk_box_pack_start (GTK_BOX (sidebar_searchbox), button_clear,  FALSE, TRUE, 0);
-#endif
 
     gtk_box_pack_start (GTK_BOX (sidebar), sidebar_searchbox, FALSE, TRUE, 1);
-    gtk_box_pack_start (GTK_BOX (sidebar), sidebar_addressbox,  FALSE, TRUE, 1);
+    gtk_box_pack_start (GTK_BOX (sidebar), sidebar_browsebox,  FALSE, TRUE, 1);
     gtk_box_pack_start (GTK_BOX (sidebar), sidebar_toolbar,  FALSE, TRUE, 1);
     gtk_box_pack_start (GTK_BOX (sidebar), scrollwin, TRUE, TRUE, 1);
 
@@ -973,6 +966,7 @@ create_sidebar (void)
     g_signal_connect (treeview,     "row-collapsed",        G_CALLBACK (on_treeview_row_collapsed),         NULL);
     g_signal_connect (treeview,     "row-expanded",         G_CALLBACK (on_treeview_row_expanded),          NULL);
     g_signal_connect (searchbar,    "search-changed",       G_CALLBACK (on_searchbar_changed),              NULL);
+    g_signal_connect (browse_by_box,  "changed",            G_CALLBACK (on_browse_by_box_changed),          NULL);
 
     gtk_widget_show_all (sidebar);
 
@@ -980,7 +974,7 @@ create_sidebar (void)
         gtk_widget_hide (sidebar);
 
     if (CONFIG_HIDE_NAVIGATION)
-        gtk_widget_hide (sidebar_addressbox);
+        gtk_widget_hide (sidebar_browsebox);
 
     if (CONFIG_HIDE_SEARCH)
         gtk_widget_hide (sidebar_searchbox);
@@ -1602,7 +1596,7 @@ treeview_check_expanded (gchar *uri)
         return NULL;
 
     GSList *node;
-    for (node = expanded_rows->next; node; node = node->next)  // first item is always NULL
+    for (node = expanded_rows->next; node; node = node->next)
     {
         gchar *enc_uri = g_filename_to_uri (uri, NULL, NULL);
         gboolean match = utils_str_equal (enc_uri, node->data);
@@ -1645,12 +1639,15 @@ treeview_restore_expanded (gpointer parent)
         if (treeview_check_expanded (uri))
         {
             trace("treeview_restore_expanded\n");
+            gboolean flag_set = flag_on_expand_refresh;
             flag_on_expand_refresh = TRUE;
             gtk_tree_view_expand_row (GTK_TREE_VIEW (treeview),
                         gtk_tree_model_get_path (GTK_TREE_MODEL (treestore), &i),
                         FALSE);
             treebrowser_browse (uri, &i);
-            flag_on_expand_refresh = FALSE;
+            if (!flag_set) {
+                flag_on_expand_refresh = FALSE;
+            }
             trace("treeview_restore_expanded_complete\n");
         }
 
@@ -1664,14 +1661,6 @@ treeview_separator_func (GtkTreeModel *model, GtkTreeIter *iter, gpointer data)
     gint flag;
     gtk_tree_model_get (model, iter, TREEBROWSER_COLUMN_FLAG, &flag, -1);
     return (flag == TREEBROWSER_FLAGS_SEPARATOR);
-}
-
-/* Check if path entered in addressbar really is a directory */
-static gboolean
-treebrowser_checkdir (const gchar *directory)
-{
-    gboolean is_dir = g_file_test (directory, G_FILE_TEST_IS_DIR);
-    return is_dir;
 }
 
 /* Browse given directory - update contents and fill in the treeview */
@@ -1715,7 +1704,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    list = client_browse_items (directory, searchbar_text, NULL);
+    list = client_browse_items (directory, searchbar_text, browse_by_box_active + 1, NULL);
     if (list != NULL)
     {
         foreach_slist_free (node, list)
@@ -1958,9 +1947,9 @@ on_menu_hide_navigation (GtkMenuItem *menuitem, gpointer *user_data)
 {
     CONFIG_HIDE_NAVIGATION = gtk_check_menu_item_get_active (GTK_CHECK_MENU_ITEM (menuitem));
     if (CONFIG_HIDE_NAVIGATION)
-        gtk_widget_hide (sidebar_addressbox);
+        gtk_widget_hide (sidebar_browsebox);
     else
-        gtk_widget_show (sidebar_addressbox);
+        gtk_widget_show (sidebar_browsebox);
 }
 
 static void
@@ -2037,13 +2026,15 @@ static void
 on_button_refresh (void)
 {
     trace("on_menu_refresh\n");
-    treebrowser_browse_dir(NULL);
+    treebrowser_browse_dir (NULL);
 }
 
 static void
-on_addressbar_changed ()
+on_browse_by_box_changed ()
 {
-    trace("signal: adressbar changed\n");
+    trace("signal: view by changed\n");
+    browse_by_box_active = gtk_combo_box_get_active (GTK_COMBO_BOX(browse_by_box));
+    treebrowser_browse_dir (NULL);
 }
 
 static gboolean
@@ -2053,13 +2044,7 @@ on_searchbar_timeout ()
         return FALSE;
 
     // avoid calling this function too often as it is quite expensive
-#if GLIB_CHECK_VERSION(2, 28, 0)
     gint64 now = g_get_monotonic_time ();
-#else
-    GTimeVal time_now;
-    g_get_current_time (&time_now);
-    gint64 now = 1000000L * time_now.tv_sec + time_now.tv_usec;
-#endif
     if (now - last_searchbar_change < 1000*CONFIG_SEARCH_DELAY)  // time given in usec
         return TRUE;
     last_searchbar_change = 0;
@@ -2079,26 +2064,11 @@ on_searchbar_changed ()
 {
     if (last_searchbar_change == 0)
     {
-#if GLIB_CHECK_VERSION(2, 28, 0)
         last_searchbar_change = g_get_monotonic_time ();
-#else
-        GTimeVal time_now;
-        g_get_current_time (&time_now);
-        last_searchbar_change = 1000000L * time_now.tv_sec + time_now.tv_usec;
-#endif
     }
 
     g_timeout_add (100, on_searchbar_timeout, NULL);
 }
-
-#if !GTK_CHECK_VERSION(3,6,0)
-static void
-on_searchbar_cleared ()
-{
-    gtk_entry_set_text (GTK_ENTRY (searchbar), "");
-}
-#endif
-
 
 /*-----------------*/
 /* TREEVIEW EVENTS */
@@ -2400,11 +2370,7 @@ on_treeview_mousemove (GtkWidget *widget, GdkEventButton *event)
                 .info = 0
             };
             GtkTargetList *target = gtk_target_list_new (&entry, 1);
-#if !GTK_CHECK_VERSION(3,10,0)
-            gtk_drag_begin (widget, target, GDK_ACTION_COPY | GDK_ACTION_MOVE, 1, (GdkEvent *)event);
-#else
             gtk_drag_begin_with_coordinates (widget, target, GDK_ACTION_COPY | GDK_ACTION_MOVE, 1, (GdkEvent *)event, -1, -1);
-#endif
         }
     }
 
@@ -2527,17 +2493,14 @@ plugin_cleanup (void)
 
     treeview_clear_expanded ();
 
-    //if (treebrowser_mutex)
-    //    deadbeef->mutex_free (treebrowser_mutex);
-
     if (expanded_rows)
         g_slist_free (expanded_rows);
 
-    g_free (addressbar_last_address);
+    g_free (searchbar_text);
     g_free (known_extensions);
 
     expanded_rows = NULL;
-    addressbar_last_address = NULL;
+    searchbar_text = NULL;
     known_extensions = NULL;
 
     return 0;
