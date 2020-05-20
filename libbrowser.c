@@ -482,12 +482,9 @@ void on_drag_data_get_helper (gpointer data, gpointer userdata)
     gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
                     TREEBROWSER_COLUMN_URI, &uri, -1);
 
-    // Encode Filename to URI - important!
-    enc_uri = g_filename_to_uri (uri, NULL, NULL);
-
     if (uri_str->len > 0)
         uri_str = g_string_append_c (uri_str, ' ');
-    uri_str = g_string_append (uri_str, enc_uri);
+    uri_str = g_string_append (uri_str, uri);
 
     g_free (uri);
 }
@@ -1536,7 +1533,7 @@ get_icon_from_cache (const gchar *uri, const gchar *coverart)
 
 /* Get icon for selected URI - default icon or folder image */
 static GdkPixbuf *
-get_icon_for_uri (gchar *uri)
+get_icon_for_uri (gchar *uri, gboolean folder)
 {
     if (! CONFIG_SHOW_ICONS)
         return NULL;
@@ -1544,9 +1541,8 @@ get_icon_for_uri (gchar *uri)
     GdkPixbuf *icon = NULL;
     int size = ICON_SIZE (CONFIG_ICON_SIZE);
 
-    if (! g_file_test (uri, G_FILE_TEST_IS_DIR))
+    if (! folder)
     {
-#if GLIB_CHECK_VERSION(2, 34, 0)
         gchar *content_type;
         gchar *icon_name;
         GtkIconTheme *icon_theme;
@@ -1559,7 +1555,7 @@ get_icon_for_uri (gchar *uri)
 
         g_free (content_type);
         g_free (icon_name);
-#endif
+
         // Fallback to default icon
         if (! icon)
             icon = utils_pixbuf_from_stock ("gtk-file", size);
@@ -1598,11 +1594,11 @@ treeview_check_expanded (gchar *uri)
     GSList *node;
     for (node = expanded_rows->next; node; node = node->next)
     {
-        gchar *enc_uri = g_filename_to_uri (uri, NULL, NULL);
-        gboolean match = utils_str_equal (enc_uri, node->data);
-        g_free (enc_uri);
-        if (match)
+        gboolean match = utils_str_equal (uri, node->data);
+        if (match) {
             break;
+        }
+
     }
     return node;  // == NULL if last node was reached
 }
@@ -1651,6 +1647,8 @@ treeview_restore_expanded (gpointer parent)
             trace("treeview_restore_expanded_complete\n");
         }
 
+        g_free (uri);
+
         valid = gtk_tree_model_iter_next (GTK_TREE_MODEL (treestore), &i);
     }
 }
@@ -1694,7 +1692,9 @@ treebrowser_browse (gchar *directory, gpointer parent)
     gchar           *uri;
     gchar           *tooltip;
 
-    directory = g_strconcat (directory, G_DIR_SEPARATOR_S, NULL);
+    if (directory != NULL ) {
+        directory = g_strconcat (directory, G_DIR_SEPARATOR_S, NULL);
+    }
 
     has_parent = parent ? gtk_tree_store_iter_is_valid (treestore, parent) : FALSE;
     if (has_parent && treeview_row_expanded_iter (GTK_TREE_VIEW (treeview), parent))
@@ -1731,7 +1731,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
                 }
                 last_dir_iter = gtk_tree_iter_copy (&iter);
 
-                icon = get_icon_for_uri (uri);
+                icon = get_icon_for_uri (uri, TRUE);
                 gtk_tree_store_set (treestore, &iter,
                                 TREEBROWSER_COLUMN_ICON,    icon,
                                 TREEBROWSER_COLUMN_NAME,    fname,
@@ -1748,7 +1748,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
             }
             else
             {
-                icon = get_icon_for_uri (uri);
+                icon = get_icon_for_uri (uri, FALSE);
                 gtk_tree_store_append (treestore, &iter, parent);
                 gtk_tree_store_set (treestore, &iter,
                                 TREEBROWSER_COLUMN_ICON,    icon,
@@ -1760,13 +1760,14 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
             if (icon)
                 g_object_unref (icon);
-            }
 
-        g_free (utf8_name);
+            g_free (utf8_name);
+            g_free (tooltip);
+        }
+
         g_free (uri);
         g_free (fname);
         g_free (item);
-        g_free (tooltip);
     }
     else
     {
@@ -1931,9 +1932,8 @@ on_menu_copy_uri (GtkMenuItem *menuitem, GList *uri_list)
     GList *node;
     for (node = uri_list->next; node; node = node->next)
     {
-        gchar *enc_uri = g_filename_to_uri (node->data, NULL, NULL);
         uri_str = g_string_append_c (uri_str, ' ');
-        uri_str = g_string_append (uri_str, enc_uri);
+        uri_str = g_string_append (uri_str, node->data);
     }
 
     gchar *uri = g_string_free (uri_str, FALSE);
@@ -2412,13 +2412,13 @@ on_treeview_row_expanded (GtkWidget *widget, GtkTreeIter *iter,
     }
 
     GSList *node = treeview_check_expanded (uri);
-    if (! node)
+    if (node)
     {
-        gchar *enc_uri = g_filename_to_uri (uri, NULL, NULL);
-        expanded_rows = g_slist_append (expanded_rows, enc_uri);
+        g_free (uri);
+        return;
     }
 
-    g_free (uri);
+    expanded_rows = g_slist_append (expanded_rows, uri);
 }
 
 static void
