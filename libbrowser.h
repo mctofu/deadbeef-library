@@ -61,6 +61,7 @@ enum
     TREEBROWSER_COLUMN_URI              = 2,        // needed for browsing
     TREEBROWSER_COLUMN_TOOLTIP          = 3,
     TREEBROWSER_COLUMN_FLAG             = 4,        // needed for separator
+    TREEBROWSER_COLUMN_FOLDER           = 5,
     TREEBROWSER_COLUMNC,                            // count is set automatically
 
     TREEBROWSER_RENDER_ICON             = 0,

@@ -58,6 +58,11 @@
 
 #define ICON_SIZE(s)  ( (s) < 24 ? (24) : (s) )  // size < 24 crashes plugin?
 
+typedef struct s_uri_data {
+    gchar    *uri;
+    gboolean folder;
+} t_uri_data;
+
 /*------------------*/
 /* GLOBAL VARIABLES */
 /*------------------*/
@@ -330,6 +335,7 @@ get_uris_from_selection (gpointer data, gpointer userdata)
 {
     GtkTreeIter     iter;
     gchar           *uri;
+    gboolean        folder;
     GtkTreePath     *path       = data;
     GList           *uri_list   = userdata;
 
@@ -338,7 +344,14 @@ get_uris_from_selection (gpointer data, gpointer userdata)
 
     gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
                     TREEBROWSER_COLUMN_URI, &uri, -1);
-    uri_list = g_list_append (uri_list, g_strdup (uri));
+    gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
+                    TREEBROWSER_COLUMN_FOLDER, &folder, -1);
+
+    t_uri_data *uri_data = malloc (sizeof (t_uri_data));
+    uri_data->uri = g_strdup (uri);
+    uri_data->folder = folder;
+
+    uri_list = g_list_append (uri_list, uri_data);
     g_free (uri);
 }
 
@@ -685,27 +698,8 @@ create_popup_menu (GtkTreePath *path, gchar *name, GList *uri_list)
     GtkWidget *plmenu   = gtk_menu_new ();  // submenu for playlists
     GtkWidget *item;
 
-    gchar *uri = "";
-    if (uri_list && uri_list->next)
-        uri = g_strdup (uri_list->next->data);  // first "real" item in list
-
     gint num_items      = g_list_length (uri_list) - 1;  // first item is always NULL
-    gboolean is_exists  = FALSE;
-    gboolean is_dir     = FALSE;
-    if (num_items == 1)
-    {
-        is_exists   = g_file_test (uri, G_FILE_TEST_EXISTS);
-        is_dir      = is_exists && g_file_test (uri, G_FILE_TEST_IS_DIR);
-    }
-    else if (num_items > 1)
-    {
-        is_exists = TRUE;
-        GList *node;
-        for (node = uri_list->next; node; node = node->next)
-        {
-            is_exists = is_exists && g_file_test (node->data, G_FILE_TEST_EXISTS);
-        }
-    }
+    gboolean is_exists  = TRUE;
 
     item = gtk_menu_item_new_with_mnemonic (_("_Add to current playlist"));
     gtk_container_add (GTK_CONTAINER (menu), item);
@@ -856,11 +850,9 @@ create_view_and_model (void)
     gtk_tree_view_column_set_spacing (treeview_column_text, 0);
     gtk_tree_view_column_set_sizing (treeview_column_text, GTK_TREE_VIEW_COLUMN_AUTOSIZE);
 
-#if GTK_CHECK_VERSION(2, 18, 0)
     gtk_cell_renderer_set_alignment (render_icon, 0, 0.5);  // left-middle
     gtk_cell_renderer_set_alignment (render_text, 0, 0.5);  // left-middle
     gtk_cell_renderer_set_padding (render_text, 4, 0);
-#endif
 
     if (CONFIG_FONT_SIZE > 0)
         g_object_set (render_text, "size", CONFIG_FONT_SIZE*1024, NULL);
@@ -876,13 +868,11 @@ create_view_and_model (void)
     gtk_tree_selection_set_mode (gtk_tree_view_get_selection (GTK_TREE_VIEW (view)),
                     GTK_SELECTION_MULTIPLE);
 
-#if GTK_CHECK_VERSION(2, 10, 0)
     g_object_set (view, "has-tooltip", TRUE, "tooltip-column", TREEBROWSER_COLUMN_TOOLTIP, NULL);
     gtk_tree_view_set_enable_tree_lines (GTK_TREE_VIEW (view), CONFIG_SHOW_TREE_LINES);
-#endif
 
     treestore = gtk_tree_store_new (TREEBROWSER_COLUMNC,
-                    GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT);
+                    GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INT, G_TYPE_BOOLEAN);
     gtk_tree_view_set_model (GTK_TREE_VIEW (view), GTK_TREE_MODEL (treestore));
 
     return view;
@@ -1353,20 +1343,21 @@ add_uri_to_playlist_worker (void *data)
     GList *node;
     for (node = uri_list->next; node; node = node->next)
     {
-        gchar *uri = node->data;
-        if (g_file_test (uri, G_FILE_TEST_IS_DIR))
+        t_uri_data *uri_data = node->data;
+        if (uri_data->folder)
         {
             //trace("trying to add folder %s\n", uri);
-            if (deadbeef->plt_add_dir2 (0, plt, uri, NULL, NULL) < 0)
-                fprintf (stderr, _("failed to add folder %s\n"), uri);
+            if (deadbeef->plt_add_dir2 (0, plt, uri_data->uri, NULL, NULL) < 0)
+                fprintf (stderr, _("failed to add folder %s\n"), uri_data->uri);
         }
         else
         {
             //trace("trying to add file %s\n", uri);
-            if (deadbeef->plt_add_file2 (0, plt, uri, NULL, NULL) < 0)
-                fprintf (stderr, _("failed to add file %s\n"), uri);
+            if (deadbeef->plt_add_file2 (0, plt, uri_data->uri, NULL, NULL) < 0)
+                fprintf (stderr, _("failed to add file %s\n"), uri_data->uri);
         }
-        g_free (uri);
+        g_free (uri_data->uri);
+        g_free (uri_data);
     }
 
     deadbeef->plt_add_files_end (plt, 0);
@@ -1383,9 +1374,9 @@ error:
 }
 
 static void
-add_uri_to_playlist (GList *uri_list, int index, int append, int threaded)
+add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
 {
-    if (! uri_list)
+    if (! uri_data_list)
         return;
 
     deadbeef->pl_lock ();
@@ -1407,25 +1398,25 @@ add_uri_to_playlist (GList *uri_list, int index, int append, int threaded)
     {
         if ((index == PLT_NEW) || (index >= count))
         {
-            const gchar *title = _("New Playlist");
-
             if (deadbeef->conf_get_int ("gtkui.name_playlist_from_folder", 0))
             {
                 GString *title_str = g_string_new ("");
                 GList *node;
-                for (node = uri_list->next; node; node = node->next)  // first item is always NULL
+                for (node = uri_data_list->next; node; node = node->next)  // first item is always NULL
                 {
-                    gchar *uri = node->data;
-                    const gchar *folder = strrchr (uri, '/');
+                    t_uri_data *uri_data = node->data;
+                    const gchar *folder = strrchr (uri_data->uri, '/');
                     if (title_str->len > 0)
                         g_string_append (title_str, ", ");
                     if (folder)
                         g_string_append (title_str, folder+1);
                 }
-                title = g_string_free (title_str, FALSE);
+                gchar *title = g_string_free (title_str, FALSE);
+                index = deadbeef->plt_add (count, g_strdup (title));
+                g_free (title);
+            } else {
+                index = deadbeef->plt_add (count, g_strdup (_("New Playlist")));
             }
-
-            index = deadbeef->plt_add (count, g_strdup (title));
         }
 
         plt = deadbeef->plt_get_for_idx (index);
@@ -1445,12 +1436,12 @@ add_uri_to_playlist (GList *uri_list, int index, int append, int threaded)
 
     if (threaded)
     {
-        intptr_t tid = deadbeef->thread_start (add_uri_to_playlist_worker, (void*)uri_list);
+        intptr_t tid = deadbeef->thread_start (add_uri_to_playlist_worker, (void*)uri_data_list);
         deadbeef->thread_detach (tid);
     }
     else
     {
-        add_uri_to_playlist_worker (uri_list);
+        add_uri_to_playlist_worker (uri_data_list);
     }
 }
 
@@ -1737,6 +1728,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
                                 TREEBROWSER_COLUMN_NAME,    fname,
                                 TREEBROWSER_COLUMN_URI,     uri,
                                 TREEBROWSER_COLUMN_TOOLTIP, tooltip,
+                                TREEBROWSER_COLUMN_FOLDER,  TRUE,
                                 -1);
                 gtk_tree_store_prepend (treestore, &iter_empty, &iter);
                 gtk_tree_store_set (treestore, &iter_empty,
@@ -1744,6 +1736,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
                                 TREEBROWSER_COLUMN_NAME,    _("(Empty)"),
                                 TREEBROWSER_COLUMN_URI,     NULL,
                                 TREEBROWSER_COLUMN_TOOLTIP, NULL,
+                                TREEBROWSER_COLUMN_FOLDER,  FALSE,
                                 -1);
             }
             else
@@ -1755,6 +1748,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
                                 TREEBROWSER_COLUMN_NAME,    fname,
                                 TREEBROWSER_COLUMN_URI,     uri,
                                 TREEBROWSER_COLUMN_TOOLTIP, tooltip,
+                                TREEBROWSER_COLUMN_FOLDER,  FALSE,
                                 -1);
             }
 
@@ -1778,6 +1772,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
                         TREEBROWSER_COLUMN_NAME,    _("(Empty)"),
                         TREEBROWSER_COLUMN_URI,     NULL,
                         TREEBROWSER_COLUMN_TOOLTIP, _("This directory has nothing in it"),
+                        TREEBROWSER_COLUMN_FOLDER,  FALSE,
                         -1);
     }
 
