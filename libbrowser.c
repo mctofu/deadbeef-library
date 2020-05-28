@@ -1683,10 +1683,6 @@ treebrowser_browse (gchar *directory, gpointer parent)
     gchar           *uri;
     gchar           *tooltip;
 
-    if (directory != NULL ) {
-        directory = g_strconcat (directory, G_DIR_SEPARATOR_S, NULL);
-    }
-
     has_parent = parent ? gtk_tree_store_iter_is_valid (treestore, parent) : FALSE;
     if (has_parent && treeview_row_expanded_iter (GTK_TREE_VIEW (treeview), parent))
     {
@@ -1783,8 +1779,6 @@ treebrowser_browse (gchar *directory, gpointer parent)
                             gtk_tree_model_get_path (GTK_TREE_MODEL (treestore), parent),
                             FALSE);
     }
-
-    g_free (directory);
 
     treeview_restore_expanded (parent);
 
@@ -2514,6 +2508,8 @@ libbrowser_start (void)
 
     load_config ();
 
+    client_connect ();
+
     return 0;
 }
 
@@ -2523,6 +2519,8 @@ libbrowser_stop (void)
     trace("stop\n");
 
     save_config ();
+
+    client_disconnect ();
 
     return 0;
 }
