@@ -107,13 +107,13 @@ gchar *
 utils_make_cache_path (const gchar *uri, gint imgsize, gboolean scale)
 {
     /* Path for cached icon is constructed like this:
-     *     $XDG_CACHE_HOME/deadbeef-fb/icons/<imgsize>/<uri-without-separators>.png
-     * If $XDG_CACHE_HOME is undefined, $HOME/.cache/deadbeef-fb/ is used instead.
+     *     $XDG_CACHE_HOME/deadbeef-library/icons/<imgsize>/<uri-without-separators>.png
+     * If $XDG_CACHE_HOME is undefined, $HOME/.cache/deadbeef-library/ is used instead.
      *
      * Example: The coverart image
      *     /home/user/Music/SomeArtist/Album01/cover.jpg
      * will lead to the cached at
-     *     /home/user/.cache/deadbeef-fb/24/home_user_Music_SomeArtist_Album01.png
+     *     /home/user/.cache/deadbeef-library/24/home_user_Music_SomeArtist_Album01.png
      */
     const gchar *cache = g_getenv ("XDG_CACHE_HOME");
     GString *path, *fullpath;
@@ -121,7 +121,7 @@ utils_make_cache_path (const gchar *uri, gint imgsize, gboolean scale)
 
     path = g_string_sized_new (256);  // reasonable initial size
     g_string_printf (path,
-                    cache ? "%s/deadbeef-fb/icons/%d/%s/" : "%s/.cache/deadbeef-fb/icons/%d/%s/",
+                    cache ? "%s/deadbeef-library/icons/%d/%s/" : "%s/.cache/deadbeef-library/icons/%d/%s/",
                     cache ? cache : g_getenv ("HOME"),
                     imgsize,
                     scale ? "scaled" : "");

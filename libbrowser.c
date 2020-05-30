@@ -1447,12 +1447,13 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
 
 /* Try to get icon from cache, update cache if not found or original is newer */
 static GdkPixbuf *
-get_icon_from_cache (const gchar *uri, const gchar *coverart)
+get_icon_from_cache (const gchar *uri)
 {
     GdkPixbuf *icon = NULL;
     int size = ICON_SIZE (CONFIG_COVERART_SIZE);
 
-    gchar *iconfile  = g_strconcat (uri, G_DIR_SEPARATOR_S, coverart, NULL);
+    // TODO: support non-file uris
+    gchar *iconfile  = g_filename_from_uri(uri, NULL, NULL);
     gchar *cachefile = utils_make_cache_path (uri, size, CONFIG_COVERART_SCALE);
 
     if (g_file_test (iconfile, G_FILE_TEST_EXISTS))
@@ -1681,6 +1682,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
     BrowseItem      *item;
     gchar           *fname;
     gchar           *uri;
+    gchar           *image_uri;
     gchar           *tooltip;
 
     has_parent = parent ? gtk_tree_store_iter_is_valid (treestore, parent) : FALSE;
@@ -1700,6 +1702,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
             fname       = item->name;
             uri         = item->uri;
             is_dir      = item->folder;
+            image_uri   = item->image_uri;
             utf8_name   = utils_get_utf8_from_locale (fname);
             tooltip     = utils_tooltip_from_uri (uri);
 
@@ -1718,7 +1721,12 @@ treebrowser_browse (gchar *directory, gpointer parent)
                 }
                 last_dir_iter = gtk_tree_iter_copy (&iter);
 
-                icon = get_icon_for_uri (uri, TRUE);
+                if (strlen(image_uri) > 0) {
+                    icon = get_icon_from_cache(image_uri);
+                } else {
+                    icon = get_icon_for_uri (uri, TRUE);
+                }
+
                 gtk_tree_store_set (treestore, &iter,
                                 TREEBROWSER_COLUMN_ICON,    icon,
                                 TREEBROWSER_COLUMN_NAME,    fname,
@@ -1756,6 +1764,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
         }
 
         g_free (uri);
+        g_free (image_uri);
         g_free (fname);
         g_free (item);
     }

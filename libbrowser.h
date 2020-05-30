@@ -87,7 +87,7 @@ static void         save_config_expanded_rows (void);
 static void         load_config (void);
 static void         load_config_expanded_rows (void);
 static gchar *      get_default_dir (void);
-static GdkPixbuf *  get_icon_from_cache (const gchar *uri, const gchar *coverart);
+static GdkPixbuf *  get_icon_from_cache (const gchar *uri);
 static GdkPixbuf *  get_icon_for_uri (gchar *uri, gboolean folder);
 static void         get_uris_from_selection (gpointer data, gpointer userdata);
 static void         expand_all();

@@ -3,6 +3,7 @@
 typedef struct {
     gchar *name;
     gchar *uri;
+    gchar *image_uri;
     gboolean folder;
 } BrowseItem;
 
