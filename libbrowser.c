@@ -496,7 +496,7 @@ void on_drag_data_get_helper (gpointer data, gpointer userdata)
                     TREEBROWSER_COLUMN_URI, &uri, -1);
 
     if (uri_str->len > 0)
-        uri_str = g_string_append_c (uri_str, ' ');
+        uri_str = g_string_append_c (uri_str, '\n');
     uri_str = g_string_append (uri_str, uri);
 
     g_free (uri);
