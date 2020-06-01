@@ -9,4 +9,5 @@ typedef struct {
 
 void            client_connect ();
 void            client_disconnect ();
-GSList *        client_browse_items (const gchar *path, const gchar *search, const gint browse_type, GError **error);
+GSList *        client_browse_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error);
+GSList *        client_media_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error);

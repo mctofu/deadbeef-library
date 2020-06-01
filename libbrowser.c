@@ -485,9 +485,10 @@ on_config_changed (uintptr_t ctx)
 void on_drag_data_get_helper (gpointer data, gpointer userdata)
 {
     GtkTreeIter     iter;
-    gchar           *uri, *enc_uri;
+    gchar           *uri, *media_uri;
     GtkTreePath     *path       = data;
     GString         *uri_str    = userdata;
+    GSList          *list, *node;
 
     if (! gtk_tree_model_get_iter (GTK_TREE_MODEL (treestore), &iter, path))
         return;
@@ -495,10 +496,18 @@ void on_drag_data_get_helper (gpointer data, gpointer userdata)
     gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
                     TREEBROWSER_COLUMN_URI, &uri, -1);
 
-    if (uri_str->len > 0)
-        uri_str = g_string_append_c (uri_str, '\n');
-    uri_str = g_string_append (uri_str, uri);
-
+    list = client_media_items(uri, searchbar_text, browse_by_box_active, NULL);
+    if (list != NULL)
+    {
+        foreach_slist_free (node, list)
+        {
+            media_uri   = node->data;
+            if (uri_str->len > 0)
+                uri_str = g_string_append_c (uri_str, '\n');
+            uri_str = g_string_append (uri_str, media_uri);
+        }
+        g_free(media_uri);
+    }
     g_free (uri);
 }
 
@@ -1344,21 +1353,27 @@ add_uri_to_playlist_worker (void *data)
     for (node = uri_list->next; node; node = node->next)
     {
         t_uri_data *uri_data = node->data;
-        if (uri_data->folder)
+
+        GSList          *list, *node;
+        gchar           *media_uri;
+        // TODO: should store search params with item to avoid race conditions?
+        list = client_media_items(uri_data->uri, searchbar_text, browse_by_box_active, NULL);
+        if (list != NULL)
         {
-            //trace("trying to add folder %s\n", uri);
-            if (deadbeef->plt_add_dir2 (0, plt, uri_data->uri, NULL, NULL) < 0)
-                fprintf (stderr, _("failed to add folder %s\n"), uri_data->uri);
+            foreach_slist_free (node, list)
+            {
+                media_uri = node->data;
+
+                if (deadbeef->plt_add_file2 (0, plt, media_uri, NULL, NULL) < 0)
+                    fprintf (stderr, _("failed to add file %s\n"), media_uri);
+            }
+            g_free(media_uri);
         }
-        else
-        {
-            //trace("trying to add file %s\n", uri);
-            if (deadbeef->plt_add_file2 (0, plt, uri_data->uri, NULL, NULL) < 0)
-                fprintf (stderr, _("failed to add file %s\n"), uri_data->uri);
-        }
+
         g_free (uri_data->uri);
         g_free (uri_data);
     }
+    g_list_free(node);
 
     deadbeef->plt_add_files_end (plt, 0);
     deadbeef->plt_modified (plt);
@@ -1432,10 +1447,9 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
 
     deadbeef->plt_set_curr (plt);
 
-    trace("starting thread for adding files to playlist\n");
-
     if (threaded)
     {
+        trace("starting thread for adding files to playlist\n");
         intptr_t tid = deadbeef->thread_start (add_uri_to_playlist_worker, (void*)uri_data_list);
         deadbeef->thread_detach (tid);
     }
@@ -1693,7 +1707,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    list = client_browse_items (directory, searchbar_text, browse_by_box_active + 1, NULL);
+    list = client_browse_items (directory, searchbar_text, browse_by_box_active , NULL);
     if (list != NULL)
     {
         foreach_slist_free (node, list)
