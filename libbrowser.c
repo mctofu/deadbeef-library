@@ -1339,7 +1339,7 @@ create_settings_dialog ()
 static void
 add_uri_to_playlist_worker (void *data)
 {
-    GList *uri_list = (GList*)data;
+    GPtrArray *media_uris = (GPtrArray*)data;
 
     ddb_playlist_t *plt = deadbeef->plt_get_curr ();
 
@@ -1349,31 +1349,13 @@ add_uri_to_playlist_worker (void *data)
         goto error;
     }
 
-    GList *node;
-    for (node = uri_list->next; node; node = node->next)
+    for (gsize i = 0; i < media_uris->len; i++)
     {
-        t_uri_data *uri_data = node->data;
-
-        GSList          *list, *node;
-        gchar           *media_uri;
-        // TODO: should store search params with item to avoid race conditions?
-        list = client_media_items(uri_data->uri, searchbar_text, browse_by_box_active, NULL);
-        if (list != NULL)
-        {
-            foreach_slist_free (node, list)
-            {
-                media_uri = node->data;
-
-                if (deadbeef->plt_add_file2 (0, plt, media_uri, NULL, NULL) < 0)
-                    fprintf (stderr, _("failed to add file %s\n"), media_uri);
-            }
-            g_free(media_uri);
-        }
-
-        g_free (uri_data->uri);
-        g_free (uri_data);
+        gchar *media_uri = g_ptr_array_index (media_uris, i);
+        if (deadbeef->plt_add_file2 (0, plt, media_uri, NULL, NULL) < 0)
+            fprintf (stderr, _("failed to add file %s\n"), media_uri);
+        g_free(media_uri);
     }
-    g_list_free(node);
 
     deadbeef->plt_add_files_end (plt, 0);
     deadbeef->plt_modified (plt);
@@ -1385,7 +1367,7 @@ add_uri_to_playlist_worker (void *data)
 
 error:
     deadbeef->plt_unref (plt);
-    g_list_free (uri_list);
+    g_ptr_array_free(media_uris, TRUE);
 }
 
 static void
@@ -1413,25 +1395,7 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
     {
         if ((index == PLT_NEW) || (index >= count))
         {
-            if (deadbeef->conf_get_int ("gtkui.name_playlist_from_folder", 0))
-            {
-                GString *title_str = g_string_new ("");
-                GList *node;
-                for (node = uri_data_list->next; node; node = node->next)  // first item is always NULL
-                {
-                    t_uri_data *uri_data = node->data;
-                    const gchar *folder = strrchr (uri_data->uri, '/');
-                    if (title_str->len > 0)
-                        g_string_append (title_str, ", ");
-                    if (folder)
-                        g_string_append (title_str, folder+1);
-                }
-                gchar *title = g_string_free (title_str, FALSE);
-                index = deadbeef->plt_add (count, g_strdup (title));
-                g_free (title);
-            } else {
-                index = deadbeef->plt_add (count, g_strdup (_("New Playlist")));
-            }
+            index = deadbeef->plt_add (count, g_strdup (_("New Playlist")));
         }
 
         plt = deadbeef->plt_get_for_idx (index);
@@ -1447,15 +1411,41 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
 
     deadbeef->plt_set_curr (plt);
 
+    GPtrArray *media_uris = g_ptr_array_new();
+
+    GList *data_node;
+    for (data_node = uri_data_list->next; data_node; data_node = data_node->next)
+    {
+        t_uri_data *uri_data = data_node->data;
+
+        GSList          *list, *node;
+        gchar           *media_uri;
+        list = client_media_items(uri_data->uri, searchbar_text, browse_by_box_active, NULL);
+        if (list != NULL)
+        {
+            foreach_slist_free (node, list)
+            {
+                media_uri = node->data;
+                g_ptr_array_add(media_uris, (gpointer)g_strdup(media_uri));
+            }
+            g_free(media_uri);
+        }
+
+        g_free (uri_data->uri);
+        g_free (uri_data);
+    }
+    g_list_free(uri_data_list);
+
+
     if (threaded)
     {
         trace("starting thread for adding files to playlist\n");
-        intptr_t tid = deadbeef->thread_start (add_uri_to_playlist_worker, (void*)uri_data_list);
+        intptr_t tid = deadbeef->thread_start (add_uri_to_playlist_worker, (void*)media_uris);
         deadbeef->thread_detach (tid);
     }
     else
     {
-        add_uri_to_playlist_worker (uri_data_list);
+        add_uri_to_playlist_worker (media_uris);
     }
 }
 
