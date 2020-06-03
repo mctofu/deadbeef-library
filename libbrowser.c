@@ -485,10 +485,10 @@ on_config_changed (uintptr_t ctx)
 void on_drag_data_get_helper (gpointer data, gpointer userdata)
 {
     GtkTreeIter     iter;
-    gchar           *uri, *media_uri;
+    gchar           *uri;
     GtkTreePath     *path       = data;
     GString         *uri_str    = userdata;
-    GSList          *list, *node;
+    GPtrArray       *items;
 
     if (! gtk_tree_model_get_iter (GTK_TREE_MODEL (treestore), &iter, path))
         return;
@@ -496,18 +496,16 @@ void on_drag_data_get_helper (gpointer data, gpointer userdata)
     gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
                     TREEBROWSER_COLUMN_URI, &uri, -1);
 
-    list = client_media_items(uri, searchbar_text, browse_by_box_active, NULL);
-    if (list != NULL)
+    items = client_media_items(uri, searchbar_text, browse_by_box_active, NULL);
+    for (gsize i = 0; i < items->len; i++)
     {
-        foreach_slist_free (node, list)
-        {
-            media_uri   = node->data;
-            if (uri_str->len > 0)
-                uri_str = g_string_append_c (uri_str, '\n');
-            uri_str = g_string_append (uri_str, media_uri);
-        }
-        g_free(media_uri);
+        gchar *media_uri = g_ptr_array_index (items, i);
+        if (uri_str->len > 0)
+            uri_str = g_string_append_c (uri_str, '\n');
+        uri_str = g_string_append (uri_str, media_uri);
+        g_free (media_uri);
     }
+    g_ptr_array_free(items, TRUE);
     g_free (uri);
 }
 
@@ -1418,23 +1416,20 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
     {
         t_uri_data *uri_data = data_node->data;
 
-        GSList          *list, *node;
-        gchar           *media_uri;
-        list = client_media_items(uri_data->uri, searchbar_text, browse_by_box_active, NULL);
-        if (list != NULL)
+        gchar *media_uri;
+        GPtrArray *items = client_media_items (uri_data->uri, searchbar_text, browse_by_box_active, NULL);
+        for (gsize i = 0; i < items->len; i++)
         {
-            foreach_slist_free (node, list)
-            {
-                media_uri = node->data;
-                g_ptr_array_add(media_uris, (gpointer)g_strdup(media_uri));
-            }
-            g_free(media_uri);
+            gchar *media_uri = g_ptr_array_index (items, i);
+            g_ptr_array_add (media_uris, (gpointer)g_strdup (media_uri));
+            g_free (media_uri);
         }
+        g_ptr_array_free (items, TRUE);
 
         g_free (uri_data->uri);
         g_free (uri_data);
     }
-    g_list_free(uri_data_list);
+    g_list_free (uri_data_list);
 
 
     if (threaded)
@@ -1681,7 +1676,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
     gboolean        expanded = FALSE;
     gboolean        has_parent;
     gchar           *utf8_name;
-    GSList          *list, *node;
+    GPtrArray       *items;
 
     BrowseItem      *item;
     gchar           *fname;
@@ -1697,12 +1692,12 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    list = client_browse_items (directory, searchbar_text, browse_by_box_active , NULL);
-    if (list != NULL)
+    items = client_browse_items (directory, searchbar_text, browse_by_box_active , NULL);
+    if (items->len > 0)
     {
-        foreach_slist_free (node, list)
+        for (gsize i = 0; i < items->len; i++)
         {
-            item        = node->data;
+            item        = g_ptr_array_index (items, i);
             fname       = item->name;
             uri         = item->uri;
             is_dir      = item->folder;
@@ -1765,12 +1760,13 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
             g_free (utf8_name);
             g_free (tooltip);
+            g_free (uri);
+            g_free (image_uri);
+            g_free (fname);
+            g_free (item);
         }
 
-        g_free (uri);
-        g_free (image_uri);
-        g_free (fname);
-        g_free (item);
+        g_ptr_array_free (items, TRUE);
     }
     else
     {
