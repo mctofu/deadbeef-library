@@ -36,46 +36,6 @@ utils_str_equal (const gchar *a, const gchar *b)
     return FALSE;
 }
 
-/* Compare two strings, ignoring case differences */
-gint
-utils_str_casecmp (const gchar *s1, const gchar *s2)
-{
-    gchar *tmp1, *tmp2;
-    gint result;
-
-    g_return_val_if_fail (s1 != NULL, 1);
-    g_return_val_if_fail (s2 != NULL, -1);
-
-    tmp1 = g_strdup (s1);
-    tmp2 = g_strdup (s2);
-
-    /* first ensure strings are UTF-8 */
-    if (! g_utf8_validate (s1, -1, NULL))
-        setptr (tmp1, g_locale_to_utf8 (s1, -1, NULL, NULL, NULL));
-    if (! g_utf8_validate (s2, -1, NULL))
-        setptr (tmp2, g_locale_to_utf8 (s2, -1, NULL, NULL, NULL));
-
-    if (tmp1 == NULL) {
-        g_free (tmp2);
-        return 1;
-    }
-    if (tmp2 == NULL) {
-        g_free (tmp1);
-        return -1;
-    }
-
-    /* then convert the strings into a case-insensitive form */
-    setptr (tmp1, g_utf8_strdown (tmp1, -1));
-    setptr (tmp2, g_utf8_strdown (tmp2, -1));
-
-    /* compare */
-    result = strcmp (tmp1, tmp2);
-    g_free (tmp1);
-    g_free (tmp2);
-    return result;
-}
-
-
 /* Convert text in local encoding to UTF8 */
 gchar *
 utils_get_utf8_from_locale(const gchar *locale_text)
@@ -270,18 +230,6 @@ tree_store_iter_clear_nodes (GtkTreeStore *store, gpointer iter, gboolean delete
 }
 
 #if GTK_CHECK_VERSION(3,6,0)
-/* Get number of rows in a grid where the given column is not empty */
-gint
-gtk_grid_get_number_of_rows (GtkGrid *grid, gint column)
-{
-    int row = 0;
-    while (gtk_grid_get_child_at (grid, column, row) != NULL)
-    {
-        row++;
-    }
-    return row;
-}
-
 /* Get color chooser result as hex string */
 gchar *
 gtk_color_chooser_get_hex (GtkColorChooser *chooser)

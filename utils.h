@@ -2,20 +2,8 @@
 #include <gtk/gtk.h>
 #include <gdk/gdk.h>
 
-/* Helper macros */
-#define foreach_slist_free(node,list)               \
-                for (node = list, list = NULL; g_slist_free_1(list), node != NULL; list = node, node = node->next)
-#define NZV(ptr)                                    \
-                (G_LIKELY((ptr)) && G_LIKELY((ptr)[0]))
-#define setptr(ptr,result)                          \
-                { gpointer setptr_tmp = ptr; ptr = result; g_free(setptr_tmp); }
-#define GLADE_HOOKUP_OBJECT(component,widget,name)  \
-                g_object_set_data_full (G_OBJECT (component), name, gtk_widget_ref (widget), (GDestroyNotify) gtk_widget_unref)
-
-
 GdkPixbuf *     utils_pixbuf_from_stock (const gchar *icon_name, gint size);
 gboolean        utils_str_equal (const gchar *a, const gchar *b);
-gint            utils_str_casecmp (const gchar *s1, const gchar *s2);
 gchar *         utils_get_utf8_from_locale(const gchar *locale_text);
 gchar *         utils_tooltip_from_uri (const gchar *uri);
 gchar *         utils_make_cache_path (const gchar *uri, gint imgsize, gboolean scale);
@@ -28,6 +16,5 @@ gboolean        tree_view_collapse_rows_recursive (GtkTreeModel *model, GtkTreeV
 void            tree_store_iter_clear_nodes (GtkTreeStore *store, gpointer iter, gboolean delete_root);
 
 #if GTK_CHECK_VERSION(3,6,0)
-gint            gtk_grid_get_number_of_rows (GtkGrid *grid, gint column);
 gchar *         gtk_color_chooser_get_hex (GtkColorChooser *chooser);
 #endif
