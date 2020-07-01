@@ -1,12 +1,14 @@
 /*
+    Library plugin for the DeaDBeeF audio player
+    https://github.com/mctofu/deadbeef-library/
+
+    Copyright (C) 2020 David McIntosh
+
+    Based on:
     Filebrowser plugin for the DeaDBeeF audio player
     http://sourceforge.net/projects/deadbeef-fb/
 
     Copyright (C) 2011-2016 Jan D. Behrens <zykure@web.de>
-
-    Based on Geany treebrowser plugin:
-        treebrowser.c - v0.20
-        Copyright 2010 Adrian Dimitrov <dimitrov.adrian@gmail.com>
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
