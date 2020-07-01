@@ -69,6 +69,9 @@ typedef struct s_uri_data {
 
 static const gchar*         BROWSE_BY_FOLDER            = "folder";
 static const gchar*         BROWSE_BY_ARTIST_ALBUM      = "artist/album";
+static const gchar*         BROWSE_BY_GENRE             = "genre";
+static const gchar*         BROWSE_BY_YEAR              = "year";
+static const gchar*         BROWSE_BY_MODIFIED          = "modified";
 
 /* Options changeable by user */
 static gboolean             CONFIG_ENABLED              = TRUE;
@@ -940,6 +943,9 @@ create_sidebar (void)
 
     gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_FOLDER);
     gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_ARTIST_ALBUM);
+    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_GENRE);
+    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_YEAR);
+    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (browse_by_box), BROWSE_BY_MODIFIED);
 
     gtk_combo_box_set_active (GTK_COMBO_BOX (browse_by_box), 0);
 
