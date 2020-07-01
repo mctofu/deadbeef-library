@@ -9,5 +9,5 @@ typedef struct {
 
 void            client_connect ();
 void            client_disconnect ();
-GPtrArray *     client_browse_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error);
-GPtrArray *     client_media_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error);
+GPtrArray *     client_browse_items (const gchar *uri, const gchar *search, const gint browse_type);
+GPtrArray *     client_media_items (const gchar *uri, const gchar *search, const gint browse_type);

@@ -14,7 +14,7 @@ client_disconnect ()
 }
 
 GPtrArray *
-client_browse_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error)
+client_browse_items (const gchar *uri, const gchar *search, const gint browse_type)
 {
     MLibGRPC_BrowseItems *results = MLibGRPC_Browse ((char*)uri, (char*)search, browse_type + 1);
 
@@ -41,7 +41,7 @@ client_browse_items (const gchar *uri, const gchar *search, const gint browse_ty
 }
 
 GPtrArray *
-client_media_items (const gchar *uri, const gchar *search, const gint browse_type, GError **error)
+client_media_items (const gchar *uri, const gchar *search, const gint browse_type)
 {
     MLibGRPC_MediaItems *results = MLibGRPC_Media ((char*)uri, (char*)search, browse_type + 1);
 

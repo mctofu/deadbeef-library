@@ -497,7 +497,7 @@ void on_drag_data_get_helper (gpointer data, gpointer userdata)
     gtk_tree_model_get (GTK_TREE_MODEL (treestore), &iter,
                     TREEBROWSER_COLUMN_URI, &uri, -1);
 
-    items = client_media_items(uri, searchbar_text, browse_by_box_active, NULL);
+    items = client_media_items(uri, searchbar_text, browse_by_box_active);
     for (gsize i = 0; i < items->len; i++)
     {
         gchar *media_uri = g_ptr_array_index (items, i);
@@ -1421,7 +1421,7 @@ add_uri_to_playlist (GList *uri_data_list, int index, int append, int threaded)
         t_uri_data *uri_data = data_node->data;
 
         gchar *media_uri;
-        GPtrArray *items = client_media_items (uri_data->uri, searchbar_text, browse_by_box_active, NULL);
+        GPtrArray *items = client_media_items (uri_data->uri, searchbar_text, browse_by_box_active);
         for (gsize i = 0; i < items->len; i++)
         {
             gchar *media_uri = g_ptr_array_index (items, i);
@@ -1696,7 +1696,7 @@ treebrowser_browse (gchar *directory, gpointer parent)
 
     tree_store_iter_clear_nodes (treestore, parent, FALSE);
 
-    items = client_browse_items (directory, searchbar_text, browse_by_box_active , NULL);
+    items = client_browse_items (directory, searchbar_text, browse_by_box_active);
     if (items->len > 0)
     {
         for (gsize i = 0; i < items->len; i++)
