@@ -30,8 +30,8 @@ client_browse_items (const gchar *uri, const gchar *search, const gint browse_ty
     GPtrArray *items = g_ptr_array_sized_new (results->count);
 
     MLibGRPC_BrowseItem **idx = results->items;
-    int i = 0;
-    for (MLibGRPC_BrowseItem *result = *idx; i < results->count; result = *++idx, i++) {
+    for (int i = 0; i < results->count; idx++, i++) {
+        MLibGRPC_BrowseItem *result = *idx;
         BrowseItem *item = g_malloc (sizeof *item);
         item->name = g_strdup (result->name);
         item->uri = g_strdup (result->uri);
