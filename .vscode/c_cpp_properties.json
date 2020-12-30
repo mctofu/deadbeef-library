@@ -3,7 +3,8 @@
         {
             "name": "Linux",
             "includePath": [
-                "${workspaceFolder}/**",
+               "${workspaceFolder}/**",
+               "${workspaceFolder}/../musiclib-grpc/cgo/build/client.h",
                "/usr/include/gtk-3.0",
                "/usr/include/at-spi2-atk/2.0",
                "/usr/include/at-spi-2.0",

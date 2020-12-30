@@ -1,10 +1,19 @@
+#include <gdk/gdk.h>
+
 #include "client.h"
-#include "../music-library-grpc/cgo/build/client.h"
+#include "../musiclib-grpc/cgo/build/client.h"
+
+#ifdef DEBUG
+#define CLIENT_DEBUG TRUE
+#else
+#define CLIENT_DEBUG FALSE
+#endif
+
 
 void
 client_connect ()
 {
-    MLibGRPC_Connect ();
+    MLibGRPC_Connect ("127.0.0.1:8337", FALSE, CLIENT_DEBUG);
 }
 
 void
