@@ -51,6 +51,15 @@ jobs:
       working-directory: ./musiclib-grpc
       run: ./cgo.sh
 
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v1
+      with:
+        languages: cpp
+
     - name: Build deadbeef-library
       working-directory: ./deadbeef-library
       run: ./build.sh
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
