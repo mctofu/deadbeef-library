@@ -30,12 +30,14 @@ jobs:
 
     - name: Check out code into deadbeef-library subdirectory
       uses: actions/checkout@v2
-      path: deadbeef-library
+      with:
+        path: deadbeef-library
 
     - name: Check out musiclib-grpc into an adjacent subdirectory
       uses: actions/checkout@v2
-      repository: mctofu/musiclib-grpc
-      path: musiclib-grpc
+      with:
+        repository: mctofu/musiclib-grpc
+        path: musiclib-grpc
 
     - name: Cache go modules
       uses: actions/cache@v2
