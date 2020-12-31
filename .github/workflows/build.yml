@@ -54,14 +54,13 @@ jobs:
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v1
-      working-directory: ./deadbeef-library
       with:
         languages: cpp
+        config-file: ./deadbeef-library/.github/codeql/codeql-config.yml
 
     - name: Build deadbeef-library
       working-directory: ./deadbeef-library
       run: ./build.sh
 
     - name: Perform CodeQL Analysis
-      working-directory: ./deadbeef-library
       uses: github/codeql-action/analyze@v1
