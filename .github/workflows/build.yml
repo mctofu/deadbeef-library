@@ -17,8 +17,8 @@ jobs:
 
     - name: Install deadbeef headers
       run: |
-        sudo mkdir -p /usr/local/include/deedbeef
-        cd /usr/local/include/deedbeef
+        sudo mkdir -p /usr/local/include/deadbeef
+        cd /usr/local/include/deadbeef
         sudo curl -O https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/plugins/gtkui/gtkui_api.h
         sudo curl -O https://raw.githubusercontent.com/DeaDBeeF-Player/deadbeef/master/deadbeef.h
 
