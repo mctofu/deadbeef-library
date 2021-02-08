@@ -40,7 +40,7 @@ jobs:
         path: musiclib-grpc
 
     - name: Cache go modules
-      uses: actions/cache@v2
+      uses: actions/cache@v2.1.4
       env:
         cache-name: cache-go-modules
       with:
