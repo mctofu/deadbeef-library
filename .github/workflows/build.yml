@@ -35,12 +35,12 @@ jobs:
       id: go
 
     - name: Check out code into deadbeef-library subdirectory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         path: deadbeef-library
 
     - name: Check out musiclib-grpc into an adjacent subdirectory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: mctofu/musiclib-grpc
         path: musiclib-grpc
