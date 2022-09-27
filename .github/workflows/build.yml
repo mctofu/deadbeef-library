@@ -45,14 +45,6 @@ jobs:
         repository: mctofu/musiclib-grpc
         path: musiclib-grpc
 
-    - name: Cache go modules
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-go-modules
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
-
     - name: Build cgo client
       working-directory: ./musiclib-grpc
       run: ./cgo.sh
