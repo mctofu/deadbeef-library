@@ -31,7 +31,7 @@ jobs:
     - name: Set up Go 1.x
       uses: actions/setup-go@v3
       with:
-        go-version: ^1.15
+        go-version: ^1.19
       id: go
 
     - name: Check out code into deadbeef-library subdirectory
@@ -44,14 +44,6 @@ jobs:
       with:
         repository: mctofu/musiclib-grpc
         path: musiclib-grpc
-
-    - name: Cache go modules
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-go-modules
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/go.sum') }}
 
     - name: Build cgo client
       working-directory: ./musiclib-grpc
