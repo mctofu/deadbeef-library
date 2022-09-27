@@ -121,9 +121,9 @@ utils_check_dir (const gchar *dir, mode_t mode)
         if (slash)
             *slash = 0;
         if (-1 == stat (tmp, &stat_buf)) {
-            int errno = mkdir (tmp, mode);
-            if (0 != errno) {
-                fprintf (stderr, "Failed to create %s (%d)\n", tmp, errno);
+            int err = mkdir (tmp, mode);
+            if (0 != err) {
+                fprintf (stderr, "Failed to create %s (%d)\n", tmp, err);
                 g_free (tmp);
                 return 0;
             }
